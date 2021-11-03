@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="learning_config_file" default="../configs/pybullet_land.yaml"/>
+
+    <node pkg="wheeledsim_land" type="run_policy.py" name="policy"> 
+	</node>
+
+	<node pkg="wheeledsim_land" type="run_learning.py" name="learning" args="--config_spec $(dirname)/$(arg learning_config_file) --use_stamps t" output="screen"> 
+	</node>
+
+</launch>

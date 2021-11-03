@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+friction_map*
+*.png
+*.pt
 
 # C extensions
 *.so

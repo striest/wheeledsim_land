@@ -1,0 +1,17 @@
+---
+    observation:
+        "/mux/intervention":
+            type: Bool
+            remap: "intervention"
+
+        "/front_camera":
+            type: Image
+            remap: "image_rgb"
+            options:
+                output_resolution: [64, 64]
+                nchannels: 3
+
+    action:
+        "/cmd":
+            type: AckermannDrive
+    dt: 0.1
