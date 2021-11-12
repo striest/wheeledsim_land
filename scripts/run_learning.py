@@ -5,6 +5,7 @@ import torch
 import argparse
 import os
 import matplotlib.pyplot as plt
+from tabulate import tabulate
 
 from sensor_msgs.msg import Joy
 
@@ -30,8 +31,16 @@ if __name__ == '__main__':
 
     parser.add_argument('--config_spec', type=str, required=True, help='Path to the yaml file that contains the dataset spec.')
     parser.add_argument('--use_stamps', type=str2bool, required=False, default=True, help='Whether to use the time provided in the stamps or just the ros time')
+    parser.add_argument('--n_steer', type=int, required=False, default=5, help='Number of steering angles to consider')
+    parser.add_argument('--T', type=int, required=False, default=5, help="Number of timesteps (from yaml) to execute actions for")
+    parser.add_argument('--pT', type=int, required=False, default=2, help="Multiplier on T for collision lookahead")
+    parser.add_argument('--grad_rate', type=float, required=False, default=1., help='Numer of training steps to take per dt')
+    parser.add_argument('--viz', type=str2bool, required=False, default=True, help='Whether to display a viz')
 
     args = parser.parse_known_args()[0]
+
+    print("ARGS:")
+    print(tabulate(vars(args).items(), headers = ['Arg', 'Value'], tablefmt='psql'))
 
     rospy.init_node('online_learning')
 
@@ -68,6 +77,13 @@ if __name__ == '__main__':
 
     plt.show(block=False)
 
+    if args.grad_rate > 1:
+        gi = 1
+        gii = int(args.grad_rate)
+    else:
+        gi = int(1/args.grad_rate)
+        gii = 1
+
     i = 0
     while not rospy.is_shutdown():
         data = dict_to(converter.get_data(), buf.device)
@@ -95,8 +111,8 @@ if __name__ == '__main__':
 
         plt.pause(1e-2)
 
-        if (~buf.intervention).sum() > 0 and buf.n > 0:
-            for i in range(3):
+        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0:
+            for i in range(gii):
                 trainer.update()
 
         i += 1

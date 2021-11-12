@@ -5,6 +5,7 @@ __pycache__/
 friction_map*
 *.png
 *.pt
+*.swp
 
 # C extensions
 *.so
