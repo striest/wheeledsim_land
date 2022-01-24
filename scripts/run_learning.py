@@ -64,7 +64,7 @@ if __name__ == '__main__':
 
     cmd_pub = rospy.Publisher("/joy_auto", Joy, queue_size=1)
 
-    replay_buffer_viz = ReplayBufferViz(buf)
+#    replay_buffer_viz = ReplayBufferViz(buf)
     intervention_prediction_viz = InterventionPredictionViz(net)
 
     rate = rospy.Rate(1/spec.dt)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
         prev_data = data
 
-        replay_buffer_viz.update_figs()
+#        replay_buffer_viz.update_figs()
         intervention_prediction_viz.update(prev_data['observation']['image_rgb'])
 
         print(buf.n)

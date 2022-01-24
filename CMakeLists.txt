@@ -167,6 +167,7 @@ catkin_install_python(PROGRAMS
     scripts/cmd_mux.py
     scripts/joy_control.py
     scripts/run_simulator.py
+    scripts/run_learning.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

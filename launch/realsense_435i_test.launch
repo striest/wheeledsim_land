@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="learning_config_file" default="../configs/realsense_435i_test.yaml"/>
+    <arg name="n_steer" default="5"/>
+    <arg name="T" default="5"/>
+    <arg name="pT" default="2"/>
+    <arg name="grad_rate" default="1"/>
+    <arg name="viz" default="t"/>
+
+	<node pkg="wheeledsim_land" type="run_learning.py" name="learning" args="--config_spec $(dirname)/$(arg learning_config_file) --use_stamps t --n_steer $(arg n_steer) --T $(arg T) --pT $(arg pT) --grad_rate $(arg grad_rate) --viz $(arg viz)" output="screen"> 
+	</node>
+
+</launch>
