@@ -20,6 +20,7 @@ class ToJoy:
         msg.axes = [0.] * 6
         msg.axes[self.taxis] = act[0].cpu().item()
         msg.axes[self.saxis] = act[1].cpu().item()
+        msg.buttons[4] = 1
         return msg
 
     def to(self, device):

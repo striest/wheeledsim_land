@@ -50,17 +50,18 @@ if __name__ == '__main__':
 
     steer_n = 5
     T = 5
+    smax = 0.3
 
 #    buf = NStepDictReplayBuffer(spec, capacity=2000).to('cuda')
-    buf = InterventionReplayBuffer(spec, capacity=50000).to('cuda')
+    buf = InterventionReplayBuffer(spec, capacity=10000).to('cuda')
     net = ResnetCNN(insize=[3, 64, 64], outsize=steer_n, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cuda')
     opt = torch.optim.Adam(net.parameters(), lr=3e-4)
 
-    seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-1, 1), steer_n=steer_n, t=T)
+    seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=steer_n, t=T)
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
     joy_policy = ToJoy(policy, saxis=2, taxis=1).to('cuda')
 
-    trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=2*T)
+    trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=args.pT*T, sscale=2*-smax)
 
     cmd_pub = rospy.Publisher("/joy_auto", Joy, queue_size=1)
 
@@ -130,3 +131,4 @@ if __name__ == '__main__':
     buf.insert(batch)
     print('saving buf to {}...'.format(os.path.join(os.getcwd(), 'buffer.pt')))
     torch.save(buf.to('cpu'), 'buffer.pt')
+    torch.save(net.to('cpu'), 'net.pt')

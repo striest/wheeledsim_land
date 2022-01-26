@@ -1,0 +1,19 @@
+---
+    observation:
+        "/mux/intervention":
+            type: Bool
+            remap: "intervention"
+
+        "/multisense/left/image_rect_color":
+            type: Image
+            remap: "image_rgb"
+            options:
+                output_resolution: [64, 64]
+                nchannels: 3
+
+    action:
+        "/cmd":
+            type: Twist
+            options:
+                mode: "action"
+    dt: 0.1

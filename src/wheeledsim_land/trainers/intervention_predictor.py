@@ -24,6 +24,10 @@ class InterventionPredictionTrainer:
 
         seq_idxs = torch.argmin(torch.linalg.norm(batch['action'][:, 0].unsqueeze(1) - self.scaled_acts.unsqueeze(0), dim=-1), dim=-1)
 
+#        print('SACT:', self.scaled_acts)
+#        print('ACTS:', batch['action'][:, 0])
+#        print('SEQS:', seq_idxs)
+
         _x = batch['observation']['image_rgb'][:, 0]
         _y = batch['next_observation']['intervention'].any(dim=1).squeeze().float()
         _ypred = self.network.forward(_x)
