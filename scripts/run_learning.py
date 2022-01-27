@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 
 import rospy
 import torch
@@ -51,9 +50,10 @@ if __name__ == '__main__':
     steer_n = 5
     T = 5
     smax = 0.3
+    frame_offset = 2
 
 #    buf = NStepDictReplayBuffer(spec, capacity=2000).to('cuda')
-    buf = InterventionReplayBuffer(spec, capacity=10000).to('cuda')
+    buf = InterventionReplayBuffer(spec, capacity=10000, frame_offset=frame_offset).to('cuda')
     net = ResnetCNN(insize=[3, 64, 64], outsize=steer_n, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cuda')
     opt = torch.optim.Adam(net.parameters(), lr=3e-4)
 
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     cmd_pub = rospy.Publisher("/joy_auto", Joy, queue_size=1)
 
 #    replay_buffer_viz = ReplayBufferViz(buf)
-    intervention_prediction_viz = InterventionPredictionViz(net)
+    intervention_prediction_viz = InterventionPredictionViz(net, seqs)
 
     rate = rospy.Rate(1/spec.dt)
 
