@@ -29,4 +29,4 @@ class InterventionPredictionViz:
             self.axs[1].plot(probs.cpu())
 
             #Lol jank
-            self.axs[0].arrow([0., 0.], [probs.argmin().cpu().item() / len(probs), 0.8], c='r', label='policy', width=0.1)
+            self.axs[0].arrow(0.5, 0., (probs.argmin().cpu().item() - int(len(probs)/2)) / len(probs), 0.8, color='r', label='policy', width=0.02)

@@ -8,7 +8,7 @@
             type: Image
             remap: "image_rgb"
             options:
-                output_resolution: [64, 64]
+                output_resolution: [128, 128]
                 nchannels: 3
 
     action:

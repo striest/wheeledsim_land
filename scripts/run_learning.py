@@ -54,8 +54,10 @@ if __name__ == '__main__':
 
 #    buf = NStepDictReplayBuffer(spec, capacity=2000).to('cuda')
     buf = InterventionReplayBuffer(spec, capacity=10000, frame_offset=frame_offset).to('cuda')
-    net = ResnetCNN(insize=[3, 64, 64], outsize=steer_n, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cuda')
+    net = ResnetCNN(insize=[3, 128, 128], outsize=steer_n, n_blocks=3, pool=4, mlp_hiddens=[32, ]).to('cuda')
     opt = torch.optim.Adam(net.parameters(), lr=3e-4)
+
+    print(net)
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=steer_n, t=T)
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)

@@ -40,14 +40,13 @@ class InterventionReplayBuffer(NStepDictReplayBuffer):
         Index output as: [batch x time x feats]
         Note that we only want to sample when it causes an intervention
         """
-        import pdb;pdb.set_trace()
         sample_idxs = self.compute_sample_idxs(nsamples, N + self.frame_offset)
 
         #Find all timesteps where an intervention occurred in the next T timesteps
         mask1 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(N)], dim=-1).any(dim=-1)
         #Find all timesteps that have interventions within the frame offset
-        mask2 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(self.frame_offset+1)], dim=-1).any(dim=-1)
-#        mask2 = self.intervention[sample_idxs]
+#        mask2 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(self.frame_offset+1)], dim=-1).any(dim=-1)
+        mask2 = self.intervention[sample_idxs]
         #Intervention samples that are non-intervention but become interventions
         intervention_samples = sample_idxs[mask1 & ~mask2]
         #Non-interventions are samples that dont contain an intervention in the next N+frame_offset samples
