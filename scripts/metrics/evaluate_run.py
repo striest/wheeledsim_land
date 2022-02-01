@@ -31,7 +31,7 @@ if __name__ == '__main__':
     for bidx, bag_fp in enumerate(sorted(bags)):
         print('{} ({}/{})'.format(bag_fp, bidx+1, len(bags)), end='\r')
         bag = rosbag.Bag(os.path.join(args.run_dir, bag_fp), 'r')
-        for topic, msg, t in bag.read_messages():
+        for topic, msg, t in bag.read_messages(topics=[args.odom_topic, args.intervention_topic]):
             if topic == args.odom_topic:
                 time = msg.header.stamp.to_sec()
                 x = msg.pose.pose.position.x
