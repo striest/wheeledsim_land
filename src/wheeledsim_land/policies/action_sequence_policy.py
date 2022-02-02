@@ -72,3 +72,50 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
         self.sequences = self.sequences.to(device)
         self.device = device
         return self
+
+class EnsembleInterventionMinimizePolicy(RandomActionSequencePolicy):
+    """
+    Pass in action sequences and a network that minimizes intervention probs
+    """
+    def __init__(self, env, action_sequences, nets, lam=0.0, image_key='image_rgb', device='cpu'):
+        super(EnsembleInterventionMinimizePolicy, self).__init__(env, action_sequences, device)
+        self.nets = nets
+        self.image_key = image_key
+        self.lam = lam # + -> explore, - -> exploit
+
+    def get_intervention_probs(self, obs):
+        img = obs[self.image_key]
+
+        all_preds = []
+        with torch.no_grad():
+            for net in self.nets:
+                preds = net.forward(img.unsqueeze(0)).squeeze()
+                all_preds.append(preds)
+
+        all_preds = torch.stack(all_preds, dim=0)
+
+        return torch.sigmoid(all_preds)
+
+    def action(self, obs, deterministic=False):
+        if self.t % self.T == 0:
+            probs = self.get_intervention_probs(obs)
+
+            mean_prob = probs.mean(dim=0)
+            uncertainty = probs.std(dim=0)
+            scores = mean_prob + self.lam * uncertainty
+
+            self.seq_idx = scores.argmin()
+            self.current_sequence = self.sequences[self.seq_idx]
+
+            print('IDX = {}'.format(self.seq_idx))
+            print('SEQ = {}'.format(self.current_sequence))
+            self.t = 0
+
+        act = self.current_sequence[self.t]
+        self.t += 1
+        return act.to(self.device)
+
+    def to(self, device):
+        self.sequences = self.sequences.to(device)
+        self.device = device
+        return self
