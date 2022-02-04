@@ -91,52 +91,63 @@ if __name__ == '__main__':
     axs[1].set_ylabel('T(s)')
     axs[1].set_title('Interventions vs. Time')
 
-    #Plot interventions/km
-    interventions_km = []
-    position_buffer = np.array([positions[0]])
-    flag = False
-    cumulative_distance = 0.
-    for pos in positions[1:]:
-        pos_old = position_buffer[-1]
-        ds = np.linalg.norm(pos[[1, 2]] - pos_old[[1, 2]]) 
-        cumulative_distance += ds
-        position_buffer = np.concatenate([position_buffer, np.expand_dims(pos, axis=0)], axis=0)
+    if intervention_positions.shape[0] == 0:
+        print('no interventions')
+        exit()
 
-        while cumulative_distance > args.distance_window:
-            flag = True
-            ds2 = np.linalg.norm(position_buffer[0][[1, 2]] - position_buffer[1][[1, 2]])
-            cumulative_distance -= ds2
-            position_buffer = position_buffer[1:]
+    if total_distance > args.distance_window:
+        #Plot interventions/km
+        interventions_km = []
+        position_buffer = np.array([positions[0]])
+        flag = False
+        cumulative_distance = 0.
+        for pos in positions[1:]:
+            pos_old = position_buffer[-1]
+            ds = np.linalg.norm(pos[[1, 2]] - pos_old[[1, 2]]) 
+            cumulative_distance += ds
+            position_buffer = np.concatenate([position_buffer, np.expand_dims(pos, axis=0)], axis=0)
 
-        if flag:
-            interventions_km.append(position_buffer[:, 3].sum() / (0.001 * args.distance_window))
+            while cumulative_distance > args.distance_window:
+                flag = True
+                ds2 = np.linalg.norm(position_buffer[0][[1, 2]] - position_buffer[1][[1, 2]])
+                cumulative_distance -= ds2
+                position_buffer = position_buffer[1:]
 
-    axs[2].plot(positions[-len(interventions_km):, 0], interventions_km)
+            if flag:
+                interventions_km.append(position_buffer[:, 3].sum() / (0.001 * args.distance_window))
+
+        axs[2].plot(positions[-len(interventions_km):, 0], interventions_km)
+    else:
+        axs[2].text(0, 0, 'Distance too short to compute stats')
+
     axs[2].set_ylabel('Interventions/km (Window {:.2f}km)'.format(0.001 * args.distance_window))
     axs[2].set_xlabel('Time (s)')
     axs[2].set_title('Interventions/km')
 
     #Plot interventions/min
-    interventions_min = []
-    position_buffer = np.array([positions[0]])
-    flag = False
-    cumulative_time = 0.
-    for pos in positions[1:]:
-        pos_old = position_buffer[-1]
-        dt = pos[0] - pos_old[0]
-        cumulative_time += dt
-        position_buffer = np.concatenate([position_buffer, np.expand_dims(pos, axis=0)], axis=0)
+    if interventions[-1, -1] > args.distance_window:
+        interventions_min = []
+        position_buffer = np.array([positions[0]])
+        flag = False
+        cumulative_time = 0.
+        for pos in positions[1:]:
+            pos_old = position_buffer[-1]
+            dt = pos[0] - pos_old[0]
+            cumulative_time += dt
+            position_buffer = np.concatenate([position_buffer, np.expand_dims(pos, axis=0)], axis=0)
 
-        while cumulative_time > args.time_window:
-            flag = True
-            dt2 = position_buffer[1][0] - position_buffer[0][0]
-            cumulative_time -= dt2
-            position_buffer = position_buffer[1:]
+            while cumulative_time > args.time_window:
+                flag = True
+                dt2 = position_buffer[1][0] - position_buffer[0][0]
+                cumulative_time -= dt2
+                position_buffer = position_buffer[1:]
 
-        if flag:
-            interventions_min.append(position_buffer[:, 3].sum() / ((1./60.) * args.time_window))
+            if flag:
+                interventions_min.append(position_buffer[:, 3].sum() / ((1./60.) * args.time_window))
 
-    axs[3].plot(positions[-len(interventions_min):, 0], interventions_min)
+        axs[3].plot(positions[-len(interventions_min):, 0], interventions_min)
+    else:
+        axs[3].text(0, 0, 'Time too short to compute stats')
     axs[3].set_ylabel('Interventions/min (Window {:.2f}min)'.format((1./60.) * args.time_window))
     axs[3].set_xlabel('Time (s)')
     axs[3].set_title('Interventions/min')

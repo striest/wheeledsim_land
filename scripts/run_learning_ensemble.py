@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 
 import rospy
 import torch
@@ -7,6 +8,8 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 from sensor_msgs.msg import Joy
+from std_msgs.msg import Bool
+from std_msgs.msg import Float32
 
 from wheeledsim_rl.networks.cnn_blocks.cnn_blocks import ResnetCNN
 from wheeledsim_rl.replaybuffers.dict_replaybuffer import NStepDictReplayBuffer
@@ -94,6 +97,22 @@ if __name__ == '__main__':
         gii = 1
 
     i = 0
+
+    #Ok, we're doing this the sketchy way (global var saying if should train)
+    should_train = False
+    def train_callback(msg):
+        global should_train
+        should_train = msg.data
+
+    train_sub = rospy.Subscriber('/enable_training', Bool, train_callback)
+
+    #Callback to update uncertainty coeff
+    def unc_callback(msg):
+        global policy
+        policy.lam = msg.data
+
+    unc_sub = rospy.Subscriber('/policy/lambda', Float32, unc_callback)
+
     while not rospy.is_shutdown():
         data = dict_to(converter.get_data(), buf.device)
 
@@ -120,7 +139,7 @@ if __name__ == '__main__':
 
         plt.pause(1e-2)
 
-        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0:
+        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0 and should_train:
             for i in range(gii):
                 trainer.update()
 

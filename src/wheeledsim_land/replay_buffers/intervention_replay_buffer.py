@@ -102,12 +102,17 @@ if __name__ == '__main__':
     config_parser = ConfigParser()
     spec, converters, remap, rates = config_parser.parse_from_fp('../../../configs/pybullet_land.yaml')
 
-    buf2 = InterventionReplayBuffer(spec, capacity=5000, frame_offset=5)
+    buf2 = InterventionReplayBuffer(spec, capacity=5000, frame_offset=0)
     buf = torch.load('buffer.pt')
 
     data = buf.sample_idxs(torch.arange(len(buf)))
     buf2.insert(data)
 
-    batch = buf2.sample(16, 10)
+    for i in range(1000):
+        print(i, end='\r')
+        try:
+            batch = buf2.sample(16, 10)
+        except:
+            import pdb;pdb.set_trace()
 
     print(batch['observation']['intervention'].squeeze())

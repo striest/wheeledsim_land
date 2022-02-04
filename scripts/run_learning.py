@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 
 import rospy
 import torch
@@ -7,6 +8,7 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 from sensor_msgs.msg import Joy
+from std_msgs.msg import Bool
 
 from wheeledsim_rl.networks.cnn_blocks.cnn_blocks import ResnetCNN
 from wheeledsim_rl.replaybuffers.dict_replaybuffer import NStepDictReplayBuffer
@@ -24,6 +26,8 @@ from wheeledsim_land.trainers.intervention_predictor import InterventionPredicti
 
 from wheeledsim_land.visualization.replay_buffer import ReplayBufferViz
 from wheeledsim_land.visualization.intervention_prediction import InterventionPredictionViz
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -88,7 +92,18 @@ if __name__ == '__main__':
         gii = 1
 
     i = 0
+
+    #Ok, we're doing this the sketchy way (global var saying if should train)
+    should_train = False
+    def train_callback(msg):
+        global should_train
+        should_train = msg.data
+
+    train_sub = rospy.Subscriber('/enable_training', Bool, train_callback)
+
     while not rospy.is_shutdown():
+        print('TRAIN = {}'.format(should_train))
+
         data = dict_to(converter.get_data(), buf.device)
 
         batch = {
@@ -114,7 +129,7 @@ if __name__ == '__main__':
 
         plt.pause(1e-2)
 
-        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0:
+        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0 and should_train:
             for i in range(gii):
                 trainer.update()
 
