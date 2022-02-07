@@ -67,7 +67,7 @@ if __name__ == '__main__':
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
     joy_policy = ToJoy(policy, saxis=2, taxis=1).to('cuda')
 
-    trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=args.pT*T, sscale=2*-smax)
+    trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=args.pT*T, sscale=-1.0)
 
     cmd_pub = rospy.Publisher("/joy_auto", Joy, queue_size=1)
 
@@ -102,7 +102,9 @@ if __name__ == '__main__':
     train_sub = rospy.Subscriber('/enable_training', Bool, train_callback)
 
     while not rospy.is_shutdown():
+        can_sample = buf.can_sample(trainer.T)
         print('TRAIN = {}'.format(should_train))
+        print('CAN SAMPLE = {}'.format(can_sample))
 
         data = dict_to(converter.get_data(), buf.device)
 
@@ -129,7 +131,7 @@ if __name__ == '__main__':
 
         plt.pause(1e-2)
 
-        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0 and should_train:
+        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0 and should_train and can_sample:
             for i in range(gii):
                 trainer.update()
 

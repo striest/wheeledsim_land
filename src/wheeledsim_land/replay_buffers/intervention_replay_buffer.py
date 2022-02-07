@@ -34,13 +34,35 @@ class InterventionReplayBuffer(NStepDictReplayBuffer):
 
         super(InterventionReplayBuffer, self).insert(samples)
 
+    def can_sample(self, N):
+        """
+        Get a batch of samples from the replay buffer.
+        Index output as: [batch x time x feats]
+        Note that we only want to sample when it causes an intervention
+        """
+        sample_idxs = self.compute_sample_idxs(N + self.frame_offset)
+
+        #Find all timesteps where an intervention occurred in the next T timesteps
+        mask1 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(N)], dim=-1).any(dim=-1)
+        #Find all timesteps that have interventions within the frame offset
+#        mask2 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(self.frame_offset+1)], dim=-1).any(dim=-1)
+        mask2 = self.intervention[sample_idxs]
+        #Intervention samples that are non-intervention but become interventions
+        intervention_samples = sample_idxs[mask1 & ~mask2]
+        #Non-interventions are samples that dont contain an intervention in the next N+frame_offset samples
+        non_intervention_samples = sample_idxs[~mask1]
+
+        print(len(intervention_samples), len(non_intervention_samples))
+
+        return (len(intervention_samples) > 0) and (len(non_intervention_samples) > 0)
+
     def sample(self, nsamples, N):
         """
         Get a batch of samples from the replay buffer.
         Index output as: [batch x time x feats]
         Note that we only want to sample when it causes an intervention
         """
-        sample_idxs = self.compute_sample_idxs(nsamples, N + self.frame_offset)
+        sample_idxs = self.compute_sample_idxs(N + self.frame_offset)
 
         #Find all timesteps where an intervention occurred in the next T timesteps
         mask1 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(N)], dim=-1).any(dim=-1)
@@ -72,15 +94,20 @@ class InterventionReplayBuffer(NStepDictReplayBuffer):
 
         return out
 
-    def compute_sample_idxs(self, nsamples, N):
-        all_idxs = torch.arange(min(len(self), self.capacity)).to(self.device)
+    def compute_sample_idxs(self, N):
+        all_idxs = torch.arange(min(len(self) + 1, self.capacity)).to(self.device)
+
+        #To handle wrapping properly, we also need to say that the current idx is terminal
         terminal_idxs = torch.nonzero(self.buffer['terminal'][:len(self)], as_tuple=False)[:, 0]
-        if self.n > self.capacity:
-            all_idxs = torch.arange(terminal_idxs[-1]+1).to(self.device)
+        terminal_idxs = torch.cat([terminal_idxs, torch.tensor([self.n % self.capacity]).to(self.device)], axis=0)
+
+        #This is not correct. 
+#        if self.n > self.capacity:
+#            all_idxs = torch.arange(terminal_idxs[-1]+1).to(self.device)
 
         non_sample_idxs = torch.tensor([]).long().to(self.device)
         for i in range(N-1):
-            non_sample_idxs = torch.cat([non_sample_idxs, terminal_idxs - i])
+            non_sample_idxs = torch.cat([non_sample_idxs, (terminal_idxs - i) % self.capacity])
 
         #https://stackoverflow.com/questions/55110047/finding-non-intersection-of-two-pytorch-tensors
         combined = torch.cat((all_idxs, non_sample_idxs))

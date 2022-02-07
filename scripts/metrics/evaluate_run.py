@@ -21,6 +21,9 @@ if __name__ == '__main__':
     parser.add_argument('--intervention_topic', type=str, required=False, default='/mux/intervention', help='Topic to read intervention from')
     parser.add_argument('--distance_window', type=float, required=False, default=100., help='Sliding window to analyze interventions/km over (in m)')
     parser.add_argument('--time_window', type=float, required=False, default=10., help='Sliding window to analyze interventions/minute over (in s)')
+    parser.add_argument('--start_time', type=float, required=False, default=0., help='Drop all data before this many seconds into the bag')
+    parser.add_argument('--end_time', type=float, required=False, default=float('inf'), help='Drop all data after this many seconds')
+    parser.add_argument('--title', type=str, required=False, default='', help='Plot title')
     args = parser.parse_args()
 
     bags = [x for x in os.listdir(args.run_dir) if x[-4:] == '.bag']
@@ -53,6 +56,9 @@ if __name__ == '__main__':
     positions[:, 0] -= interventions[0, 0]
     interventions[:, 0] -= interventions[0, 0]
 
+    positions = positions[(positions[:, 0] >= args.start_time) & (positions[:, 0] <= args.end_time)]
+    interventions = interventions[(interventions[:, 0] >= args.start_time) & (interventions[:, 0] <= args.end_time)]
+
     total_distance = np.linalg.norm(positions[1:, [1, 2]] - positions[:-1, [1, 2]], axis=1).sum()
 
     #Is intervention when the signal switches from 0 to 1
@@ -71,10 +77,11 @@ if __name__ == '__main__':
     #Create figures
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     axs = axs.flatten()
+    plt.suptitle(args.title)
 
     #Plot positions
     axs[0].plot(positions[:, 1], positions[:, 2], c='b', label='path (total {:.2f}km)'.format(0.001 * total_distance))
-    axs[0].scatter(positions[0, 1], positions[0, 2], c='y', marker='>', label='start')
+    axs[0].scatter(positions[0, 1], positions[0, 2], c='y', marker='^', label='start')
     axs[0].scatter(positions[-1, 1], positions[-1, 2], c='y', marker='o', label='end')
     axs[0].scatter(intervention_positions[:, 1], intervention_positions[:, 2], c='r', marker='x', label='intervention ({} total)'.format(intervention_positions.shape[0]))
     for i, pos in enumerate(intervention_positions):
@@ -87,8 +94,8 @@ if __name__ == '__main__':
     #Plot interventions/time
     axs[1].scatter(intervention_timestamps, np.ones_like(intervention_timestamps), c='r', marker='x', label='Interventions')
     axs[1].legend()
-    axs[1].set_xlabel('Interventions')
-    axs[1].set_ylabel('T(s)')
+    axs[1].set_xlabel('T(s)')
+    axs[1].set_ylabel('Interventions')
     axs[1].set_title('Interventions vs. Time')
 
     if intervention_positions.shape[0] == 0:
@@ -125,7 +132,7 @@ if __name__ == '__main__':
     axs[2].set_title('Interventions/km')
 
     #Plot interventions/min
-    if interventions[-1, -1] > args.distance_window:
+    if interventions[-1, 0] > args.time_window:
         interventions_min = []
         position_buffer = np.array([positions[0]])
         flag = False

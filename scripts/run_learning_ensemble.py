@@ -72,7 +72,7 @@ if __name__ == '__main__':
     policy = EnsembleInterventionMinimizePolicy(env=None, action_sequences=seqs, nets=nets, lam=-5.0)
     joy_policy = ToJoy(policy, saxis=2, taxis=1).to('cuda')
 
-    trainer = EnsembleInterventionPredictionTrainer(policy, nets, buf, opts, T=args.pT*T, sscale=2*-smax)
+    trainer = EnsembleInterventionPredictionTrainer(policy, nets, buf, opts, T=args.pT*T, sscale=-1.0)
 
     cmd_pub = rospy.Publisher("/joy_auto", Joy, queue_size=1)
 
@@ -114,6 +114,10 @@ if __name__ == '__main__':
     unc_sub = rospy.Subscriber('/policy/lambda', Float32, unc_callback)
 
     while not rospy.is_shutdown():
+        can_sample = buf.can_sample(trainer.T)
+        print('TRAIN = {}'.format(should_train))
+        print('CAN SAMPLE = {}'.format(can_sample))
+
         data = dict_to(converter.get_data(), buf.device)
 
         batch = {
@@ -139,7 +143,7 @@ if __name__ == '__main__':
 
         plt.pause(1e-2)
 
-        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0 and should_train:
+        if (~buf.intervention).sum() > 0 and buf.n > 0 and (i % gi) == 0 and should_train and can_sample:
             for i in range(gii):
                 trainer.update()
 
