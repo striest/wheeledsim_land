@@ -54,11 +54,11 @@ class InterventionReplayBuffer:
 
         self.n += nsamples
 
-    def can_sample(self, N):
+    def get_intervention_samples(self, N):
         """
-        Get a batch of samples from the replay buffer.
-        Index output as: [batch x time x feats]
-        Note that we only want to sample when it causes an intervention
+        Get the number of intervention and non-intervention samples in the buffer.
+        REturns:
+            Tuple of (#interventions, #non-interventions)
         """
         sample_idxs = self.compute_sample_idxs(N + self.frame_offset)
 
@@ -72,7 +72,15 @@ class InterventionReplayBuffer:
         #Non-interventions are samples that dont contain an intervention in the next N+frame_offset samples
         non_intervention_samples = sample_idxs[~mask1]
 
-        print(len(intervention_samples), len(non_intervention_samples))
+        return intervention_samples, non_intervention_samples
+
+    def can_sample(self, N):
+        """
+        Get a batch of samples from the replay buffer.
+        Index output as: [batch x time x feats]
+        Note that we only want to sample when it causes an intervention
+        """
+        intervention_samples, non_intervention_samples = self.get_intervention_samples(N)
 
         return (len(intervention_samples) > 0) and (len(non_intervention_samples) > 0)
 
@@ -82,22 +90,10 @@ class InterventionReplayBuffer:
         Index output as: [batch x time x feats]
         Note that we only want to sample when it causes an intervention
         """
-        sample_idxs = self.compute_sample_idxs(N + self.frame_offset)
-
-        #Find all timesteps where an intervention occurred in the next T timesteps
-        mask1 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(N)], dim=-1).any(dim=-1)
-        #Find all timesteps that have interventions within the frame offset
-#        mask2 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(self.frame_offset+1)], dim=-1).any(dim=-1)
-        mask2 = self.intervention[sample_idxs]
-        #Intervention samples that are non-intervention but become interventions
-        intervention_samples = sample_idxs[mask1 & ~mask2]
-        #Non-interventions are samples that dont contain an intervention in the next N+frame_offset samples
-        non_intervention_samples = sample_idxs[~mask1]
+        intervention_samples, non_intervention_samples = self.get_intervention_samples(N)
 
         k1 = int(nsamples*self.intervention_prob)
         k2 = nsamples - k1
-
-        print(N, k1, k2)
 
         if len(intervention_samples) == 0:
             idxs = non_intervention_samples[torch.randint(len(non_intervention_samples), size=(nsamples, ))]

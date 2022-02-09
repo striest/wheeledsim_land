@@ -12,8 +12,15 @@ class ToJoy:
         self.saxis = saxis
         self.device = self.policy.device
 
-    def action(self, obs=None):
-        act = self.policy.action(obs)
+    def action(self, obs=None, return_info=False):
+        if return_info:
+            act, info = self.policy.action(obs, return_info=True)
+            return self.act_to_joy(act), info
+        else:
+            act = self.policy.action(obs, return_info=False)
+            return self.act_to_joy(act)
+
+    def act_to_joy(self, act):
         msg = Joy()
         msg.header.stamp = rospy.Time.now()
         msg.buttons = [0] * 12

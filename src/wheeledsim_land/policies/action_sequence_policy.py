@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import argparse
 
-from wheeledsim_land.util.util import dict_repeat, dict_stack, dict_to_torch
+from wheeledsim_land.util.util import dict_repeat, dict_stack, dict_to_torch, dict_map
 
 class RandomActionSequencePolicy:
     """
@@ -46,27 +46,37 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
         RandomActionSequencePolicy.__init__(self, env, action_sequences, device)
         self.net = net
         self.image_key = image_key
+        self.probs = torch.zeros(action_sequences.shape[0])
 
     def get_intervention_probs(self, obs):
-        img = obs[self.image_key]
+        #img = obs[self.image_key]
+        net_in = dict_map(obs, lambda x: x.unsqueeze(0))
         with torch.no_grad():
-            preds = self.net.forward(img.unsqueeze(0)).squeeze()
+            preds = self.net.forward(net_in).squeeze()
 
         return torch.sigmoid(preds)
 
-    def action(self, obs, deterministic=False):
+    def action(self, obs, deterministic=False, return_info=False):
         if self.t % self.T == 0:
-            probs = self.get_intervention_probs(obs)
-            self.seq_idx = probs.argmin()
+            self.probs = self.get_intervention_probs(obs)
+            self.seq_idx = self.probs.argmin()
             self.current_sequence = self.sequences[self.seq_idx]
-            print("PROBS = {}".format(probs))
-            print('IDX = {}'.format(self.seq_idx))
-            print('SEQ = {}'.format(self.current_sequence))
+#            print("PROBS = {}".format(self.probs))
+#            print('IDX = {}'.format(self.seq_idx))
+#            print('SEQ = {}'.format(self.current_sequence))
             self.t = 0
 
         act = self.current_sequence[self.t]
         self.t += 1
-        return act.to(self.device)
+
+        if return_info:
+            info = {
+                'act':act.to(self.device),
+                'probs': self.probs.detach().cpu()
+            }
+            return act.to(self.device), info
+        else:
+            return act.to(self.device)
 
     def to(self, device):
         self.sequences = self.sequences.to(device)
