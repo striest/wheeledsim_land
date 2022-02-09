@@ -3,8 +3,10 @@
         "/mux/intervention":
             type: Bool
             remap: "intervention"
+            options:
+                stamped: True
 
-        "/realsense/color/image_raw":
+        "/warty/forward/image":
             type: Image
             remap: "image_rgb"
             options:
@@ -12,6 +14,10 @@
                 nchannels: 3
 
     action:
-        "/cmd":
-            type: AckermannDrive
+        "/warty/joy_teleop/cmd_vel_stamped":
+            type: Twist
+            options:
+                mode: action
+                stamped: true
+
     dt: 0.1

@@ -1,38 +1,58 @@
 import gym
 import torch
 
-from wheeledsim_rl.util.util import dict_stack, dict_to
-from wheeledsim_rl.replaybuffers.dict_replaybuffer import NStepDictReplayBuffer
+from wheeledsim_land.util.util import dict_stack, dict_to
 
-class InterventionReplayBuffer(NStepDictReplayBuffer):
+class InterventionReplayBuffer:
     """
     Replay buffer for learning from interventions. Allows user to specify a sampling distribution of the intervention signal
     This is achieved by maintaining a list of indices for intervention/non-intervention and using that to sample.
     Expected that 0 = no intervention, 1 = intervention
     """
     def __init__(self, env, intervention_label='intervention', intervention_prob=0.5, capacity = int(1e7), frame_offset=0, device='cpu'):
-        """
-        Args:
-            env: The env with the observation/action space to log
-            intervention_label: the field of the observation space that contains the intervention data
-            intervention_prob: Sample datapoints with intervention=1 with this probability
-            capacity: The number of datapoints to store
-            frame_offset: Account for human reaction time by sliding the intervention data this many timesteps backward. Note that this only affects the sample data. We still store it unshifted
-            device: Whether to store on CPU/GPU
-        """
-        super(NStepDictReplayBuffer, self).__init__(env, capacity, device)
+        assert isinstance(env.observation_space, gym.spaces.Dict), 'Expects an env with dictionary observations'
+        assert isinstance(env.action_space, gym.spaces.Box), 'Expects an env with continuous actions (not dictionary)'
+
+        self.capacity = int(capacity)
+        self.obs_dims  = {k:v.shape for k, v in env.observation_space.spaces.items()}
+        self.n = 0 #the index to start insering into
+        self.device = device
+
+        #The actual buffer is a dict that stores torch tensors. 
+        self.act_dim = env.action_space.shape[0]
+        self.buffer = {
+                    'observation': {k:torch.tensor([float('inf')], device=self.device).repeat(self.capacity, *space) for k, space in self.obs_dims.items()},
+                    'action': torch.tensor([float('inf')], device=self.device).repeat(self.capacity, self.act_dim),
+                    'reward':torch.tensor([float('inf')], device=self.device).repeat(self.capacity, 1),
+                    'next_observation': {k:torch.tensor([float('inf')], device=self.device).repeat(self.capacity, *space) for k, space in self.obs_dims.items()},
+                    'terminal': torch.tensor([True], device=self.device).repeat(self.capacity, 1)
+                    }
         self.intervention_label = intervention_label
         self.intervention_prob = intervention_prob
-        self.intervention = torch.ones(self.capacity).bool()
+        self.intervention = torch.ones(self.capacity).byte()
         self.frame_offset = frame_offset
+
         self.to(self.device)
 
     def insert(self, samples):
+        assert len(samples['action']) == len(samples['reward']) == len(samples['terminal']), \
+        "expected all elements of samples to have same length, got: {} (\'returns\' should be a different length though)".format([(k, len(samples[k])) for k in samples.keys()])
+
         nsamples = len(samples['action'])
+
         for i in range(nsamples):
             self.intervention[(self.n + i) % self.capacity] = (abs(samples['observation'][self.intervention_label][i]-1) < 1e-4)
 
-        super(InterventionReplayBuffer, self).insert(samples)
+        for k in self.buffer.keys():
+            if k == 'observation' or k == 'next_observation':
+                for i in range(nsamples):
+                    for kk in samples[k].keys():
+                        self.buffer[k][kk][(self.n + i) % self.capacity] = samples[k][kk][i]
+            else:
+                for i in range(nsamples):
+                    self.buffer[k][(self.n + i) % self.capacity] = samples[k][i]
+
+        self.n += nsamples
 
     def can_sample(self, N):
         """
@@ -77,6 +97,8 @@ class InterventionReplayBuffer(NStepDictReplayBuffer):
         k1 = int(nsamples*self.intervention_prob)
         k2 = nsamples - k1
 
+        print(N, k1, k2)
+
         if len(intervention_samples) == 0:
             idxs = non_intervention_samples[torch.randint(len(non_intervention_samples), size=(nsamples, ))]
 
@@ -98,8 +120,8 @@ class InterventionReplayBuffer(NStepDictReplayBuffer):
         all_idxs = torch.arange(min(len(self) + 1, self.capacity)).to(self.device)
 
         #To handle wrapping properly, we also need to say that the current idx is terminal
-        terminal_idxs = torch.nonzero(self.buffer['terminal'][:len(self)], as_tuple=False)[:, 0]
-        terminal_idxs = torch.cat([terminal_idxs, torch.tensor([self.n % self.capacity]).to(self.device)], axis=0)
+        terminal_idxs = torch.nonzero(self.buffer['terminal'][:len(self)])[:, 0]
+        terminal_idxs = torch.cat([terminal_idxs, torch.tensor([self.n % self.capacity]).to(self.device)], dim=0)
 
         #This is not correct. 
 #        if self.n > self.capacity:
@@ -115,6 +137,14 @@ class InterventionReplayBuffer(NStepDictReplayBuffer):
         sample_idxs = uniques[counts == 1]
 
         return sample_idxs.long()
+
+    def sample_idxs(self, idxs):
+        idxs = idxs.to(self.device)
+        out = {k:{kk:self.buffer[k][kk][idxs] for kk in self.buffer[k].keys()} if (k == 'observation' or k == 'next_observation') else self.buffer[k][idxs] for k in self.buffer.keys()}
+        return out
+
+    def __len__(self):
+        return min(self.n, self.capacity)
 
     def to(self, device):
         self.device = device
@@ -136,7 +166,6 @@ if __name__ == '__main__':
     buf2.insert(data)
 
     for i in range(1000):
-        print(i, end='\r')
         try:
             batch = buf2.sample(16, 10)
         except:

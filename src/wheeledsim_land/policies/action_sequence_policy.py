@@ -1,9 +1,8 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import argparse
 
-from wheeledsim_rl.util.util import dict_repeat, dict_stack, dict_to_torch
+from wheeledsim_land.util.util import dict_repeat, dict_stack, dict_to_torch
 
 class RandomActionSequencePolicy:
     """
@@ -44,7 +43,7 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
     Pass in action sequences and a network that minimizes intervention probs
     """
     def __init__(self, env, action_sequences, net, image_key='image_rgb', device='cpu'):
-        super(InterventionMinimizePolicy, self).__init__(env, action_sequences, device)
+        RandomActionSequencePolicy.__init__(self, env, action_sequences, device)
         self.net = net
         self.image_key = image_key
 
@@ -60,6 +59,7 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
             probs = self.get_intervention_probs(obs)
             self.seq_idx = probs.argmin()
             self.current_sequence = self.sequences[self.seq_idx]
+            print("PROBS = {}".format(probs))
             print('IDX = {}'.format(self.seq_idx))
             print('SEQ = {}'.format(self.current_sequence))
             self.t = 0

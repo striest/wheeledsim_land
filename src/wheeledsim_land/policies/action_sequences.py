@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import argparse
@@ -118,7 +117,7 @@ if __name__ == '__main__':
         o = env.reset()
         buf = [o]
         for j, act in enumerate(seq):
-            print('Step {}/{}'.format(j+1, len(seq)), end='\r')
+            print('Step {}/{}'.format(j+1, len(seq)))
             o, r, t, i = env.step(act)
             buf.append(o)
 
