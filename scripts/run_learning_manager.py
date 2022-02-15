@@ -6,6 +6,7 @@ import argparse
 import os
 from tabulate import tabulate
 
+from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool
 
@@ -15,14 +16,12 @@ from rosbag_to_dataset.util.os_util import str2bool
 
 from wheeledsim_land.managers.eil_manager import EilManager
 from wheeledsim_land.networks.image_waypoint_network import ResnetWaypointNet
-from wheeledsim_land.policies.to_joy import ToJoy
+from wheeledsim_land.policies.to_twist import ToTwist
 from wheeledsim_land.policies.action_sequences import generate_action_sequences
 from wheeledsim_land.policies.action_sequence_policy import InterventionMinimizePolicy
 from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
 from wheeledsim_land.trainers.intervention_predictor import InterventionPredictionTrainer
 from wheeledsim_land.util.util import dict_map, dict_to
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -56,9 +55,13 @@ if __name__ == '__main__':
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=steer_n, t=T)
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
-    joy_policy = ToJoy(policy, saxis=2, taxis=1).to('cpu')
+    joy_policy = ToTwist(policy).to('cpu')
 
     trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=args.pT*T, tscale=3.0, sscale=1.0)
 
-    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate).to('cpu')
+    cmd_pub = rospy.Publisher('/wanda/cmd_vel', Twist, queue_size=1)
+
+    print("POLICY RATE: {:.2f}s, GRAD RATE: {:.2f}s".format(spec.dt, spec.dt*args.grad_rate))
+
+    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate, cmd_pub).to('cpu')
     manager.spin()

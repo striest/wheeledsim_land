@@ -25,7 +25,7 @@ class EilManager:
     I'm not sure if this is a great way to handle this, but for now I will subscribe to
     a clock that handles the buffer/policy updates
     """
-    def __init__(self, config_spec, policy, trainer, seqs, update_rate, train_rate, use_stamps=True, robot_base_frame='/warty/base', device='cpu'):
+    def __init__(self, config_spec, policy, trainer, seqs, update_rate, train_rate, cmd_pub, use_stamps=True, robot_base_frame='/warty/base', device='cpu'):
         """
         Args:
             config_spec: Path to yaml file containing observation config
@@ -34,6 +34,7 @@ class EilManager:
             seqs: The set of action sequences to train over
             update_rate: The dt to update buffers at
             train_rate: The dt to take trainer updates at
+            cmd_pub: The publisher to publish control messages to
             robot_base_frame: For viz, provide the robot's base frame
         """
         # Initialize torch objects
@@ -55,7 +56,7 @@ class EilManager:
         self.rate = rospy.Rate(1./train_rate)
         self.should_train = False
 
-        self.cmd_pub = rospy.Publisher('/joy_auto', Joy, queue_size=1)
+        self.cmd_pub = cmd_pub
         self.train_sub = rospy.Subscriber('/eil/enable_training', Bool, self.handle_train)
         
         print('wait 1s for topics...')

@@ -1,0 +1,29 @@
+---
+    observation:
+        "/mux/intervention":
+            type: Bool
+            remap: "intervention"
+            options:
+                stamped: True
+
+        "/wanda/forward/image":
+            type: Image
+            remap: "image_rgb"
+            options:
+                output_resolution: [64, 64]
+                nchannels: 3
+
+        "/waypoint_feature":
+            type: Vector3
+            remap: "waypoint"
+            options:
+                stamped: True
+
+    action:
+        "/wanda/warthog_velocity_controller/cmd_vel_out":
+            type: Twist
+            options:
+                mode: action
+                stamped: true
+
+    dt: 0.1
