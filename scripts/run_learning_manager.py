@@ -21,6 +21,7 @@ from wheeledsim_land.policies.action_sequences import generate_action_sequences
 from wheeledsim_land.policies.action_sequence_policy import InterventionMinimizePolicy
 from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
 from wheeledsim_land.trainers.intervention_predictor import InterventionPredictionTrainer
+from wheeledsim_land.data_augmentation.gaussian_observation_noise import GaussianObservationNoise
 from wheeledsim_land.util.util import dict_map, dict_to
 
 if __name__ == '__main__':
@@ -57,7 +58,8 @@ if __name__ == '__main__':
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
     joy_policy = ToTwist(policy).to('cpu')
 
-    trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=args.pT*T, tscale=3.0, sscale=1.0)
+    aug = [GaussianObservationNoise({'image_rgb':0.1})]
+    trainer = InterventionPredictionTrainer(policy, net, buf, opt, aug, T=args.pT*T, tscale=3.0, sscale=1.0)
 
     cmd_pub = rospy.Publisher('/wanda/cmd_vel', Twist, queue_size=1)
 

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 import time
 
 from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
@@ -8,11 +9,24 @@ class InterventionPredictionTrainer:
     """
     Train a network to predict probabilities of intervention from images.
     """
-    def __init__(self, policy, network, buf, opt, batchsize=16, T=10, tscale=1.0, sscale=-0.6):
+    def __init__(self, policy, network, buf, opt, augmentations, batchsize=16, T=10, tscale=1.0, sscale=-0.6):
+        """
+        Args:
+            policy: The policy to train
+            network: The policy's network (This is actually what updates)
+            buf: Replay buffer to train on
+            opt: The optimizer for the net
+            augmentations: A list of data augmentations to apply to the dataset
+            batchsize: Number of examples/minibatch
+            T: Number of steps ahead to look for intervention
+            tscale: scaling on throttle cmds to map continuous back to discrete
+            sscale: scaling on steer cmds to map continuous back to discrete
+        """
         self.policy = policy
         self.network = network
         self.buf = buf
         self.opt = opt
+        self.augmentations = augmentations
 
         self.batchsize = batchsize
         self.T = T
@@ -22,6 +36,8 @@ class InterventionPredictionTrainer:
     def update(self):
         ts = time.time()
         batch = self.buf.sample(self.batchsize, self.T)
+        aug = np.random.choice(self.augmentations)
+        batch = aug.forward(batch)
 
         seq_idxs = torch.argmin(torch.norm(batch['action'][:, 0].unsqueeze(1) - self.scaled_acts.unsqueeze(0), dim=-1), dim=-1)
 
