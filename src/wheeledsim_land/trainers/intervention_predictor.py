@@ -41,11 +41,6 @@ class InterventionPredictionTrainer:
 
         seq_idxs = torch.argmin(torch.norm(batch['action'][:, 0].unsqueeze(1) - self.scaled_acts.unsqueeze(0), dim=-1), dim=-1)
 
-#        print(self.scaling)
-#        print('SACT:', self.scaled_acts)
-#        print('ACTS:', batch['action'][:, 0])
-#        print('SEQS:', seq_idxs)
-
         #_x = batch['observation']['image_rgb'][:, 0]
 
         _x = dict_map(batch['observation'], lambda x: x[:, 0])
@@ -53,6 +48,12 @@ class InterventionPredictionTrainer:
         _y = (batch['observation']['intervention'].abs() > 1e-2).any(dim=1).squeeze().float()
         _ypred = self.network.forward(_x)
         _ypred_seq = _ypred[torch.arange(self.batchsize), seq_idxs]
+
+        print(self.scaling)
+        print('SACT:', self.scaled_acts)
+        print('ACTS + LABELS:', torch.cat([batch['action'][:, 0], _y.unsqueeze(-1)], dim=-1))
+        print('SEQS:', seq_idxs)
+#        print('RAW LABELS:', batch['observation']['intervention'].abs() )
 
         loss = torch.nn.functional.binary_cross_entropy_with_logits(_ypred_seq, _y)
 

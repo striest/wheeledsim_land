@@ -6,8 +6,8 @@
             options:
                 stamped: True
 
-        "/wanda/forward/image":
-            type: Image
+        "/wanda/stereo_right/image_rect_color/compressed":
+            type: CompressedImage
             remap: "image_rgb"
             options:
                 output_resolution: [64, 64]

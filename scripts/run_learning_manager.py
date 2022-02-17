@@ -59,11 +59,11 @@ if __name__ == '__main__':
     joy_policy = ToTwist(policy).to('cpu')
 
     aug = [GaussianObservationNoise({'image_rgb':0.1})]
-    trainer = InterventionPredictionTrainer(policy, net, buf, opt, aug, T=args.pT*T, tscale=3.0, sscale=1.0)
+    trainer = InterventionPredictionTrainer(policy, net, buf, opt, aug, T=args.pT*T, tscale=1.75, sscale=1.0)
 
     cmd_pub = rospy.Publisher('/wanda/cmd_vel', Twist, queue_size=1)
 
     print("POLICY RATE: {:.2f}s, GRAD RATE: {:.2f}s".format(spec.dt, spec.dt*args.grad_rate))
 
-    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate, cmd_pub).to('cpu')
+    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate, cmd_pub, robot_base_frame='wanda/base').to('cpu')
     manager.spin()

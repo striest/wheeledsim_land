@@ -63,6 +63,8 @@ class EilManager:
         for i in range(int(1/train_rate)):
             self.rate.sleep()
 
+        self.converter.get_data()
+
         #logging/statistics
         self.logger = Logger()
         self.policy_time = -1.
@@ -146,6 +148,8 @@ class EilManager:
             p2 = PoseStamped()
             p1.pose.position.x = seq[-1, 0].item() * 3.
             p1.pose.position.y = seq[-1, -1].item() * 3.
+            p1.header.frame_id = self.robot_base_frame
+            p2.header.frame_id = self.robot_base_frame
             trajlib_msg.poses.append(p1)
             trajlib_msg.poses.append(p2)
 
@@ -159,6 +163,8 @@ class EilManager:
             p2 = PoseStamped()
             p2.pose.position.x = self.policy_info['act'][0].item() * 5.
             p2.pose.position.y = self.policy_info['act'][1].item() * 5.
+            p1.header.frame_id = self.robot_base_frame
+            p2.header.frame_id = self.robot_base_frame
             best_action_msg.poses.append(p1)
             best_action_msg.poses.append(p2)
             self.best_action_pub.publish(best_action_msg)
@@ -172,6 +178,8 @@ class EilManager:
             p2 = PoseStamped()
             p2.pose.position.x = wpt[0].item()
             p2.pose.position.y = wpt[1].item()
+            p1.header.frame_id = self.robot_base_frame
+            p2.header.frame_id = self.robot_base_frame
             wpt_msg.poses.append(p1)
             wpt_msg.poses.append(p2)
             self.waypoint_feature_pub.publish(wpt_msg)
@@ -196,6 +204,11 @@ class EilManager:
             self.publish_debug()
 
             self.rate.sleep()
+
+            if self.itrs > 1200:
+                print('SAVE TO: ', os.getcwd())
+                torch.save(self.buf, os.path.join(os.getcwd(), 'buffer.pt'))
+                return
 
     def to(self, device):
         self.buf = self.buf.to(device)

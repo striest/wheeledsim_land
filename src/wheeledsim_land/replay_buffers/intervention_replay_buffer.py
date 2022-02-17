@@ -29,7 +29,7 @@ class InterventionReplayBuffer:
                     }
         self.intervention_label = intervention_label
         self.intervention_prob = intervention_prob
-        self.intervention = torch.ones(self.capacity).byte()
+        self.intervention = torch.ones(self.capacity).bool()
         self.frame_offset = frame_offset
 
         self.to(self.device)
