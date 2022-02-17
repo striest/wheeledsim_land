@@ -78,7 +78,7 @@ class QLearningTrainer:
         q_curr = self.network.forward(s_curr)[torch.arange(self.batchsize), seq_idxs]
         with torch.no_grad():
             #TODO: switch to target network once double DQN
-            q_next = self.network.forward(s_next).min(dim=-1)[0]
+            q_next = self.target_network.forward(s_next).min(dim=-1)[0]
 
         #Mux s.t. terminal states(interventions) have only cost
         #Note that Sanjiban says this is wrong. I'm still not sure why
@@ -90,6 +90,8 @@ class QLearningTrainer:
         loss.backward()
         self.opt.step()
 
+        self.soft_update()
+
         te = time.time() - ts
         info = {
             'loss':loss.detach().cpu().item(),
@@ -98,4 +100,9 @@ class QLearningTrainer:
 
         return info
 
-
+    def soft_update(self):
+#        print('SOFT UPDATE (params = {})'.format(list(self.target_network.parameters())[0]))
+        for target_param, param in zip(self.target_network.parameters(), self.network.parameters()):
+            target_param.data.copy_(
+                target_param.data * (1.-self.soft_update_tau) + param.data * (self.soft_update_tau)
+            )
