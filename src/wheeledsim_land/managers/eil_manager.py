@@ -205,10 +205,10 @@ class EilManager:
 
             self.rate.sleep()
 
-            if self.itrs > 1200:
-                print('SAVE TO: ', os.getcwd())
-                torch.save(self.buf, os.path.join(os.getcwd(), 'buffer.pt'))
-                return
+#            if self.itrs > 1200:
+#                print('SAVE TO: ', os.getcwd())
+#                torch.save(self.buf, os.path.join(os.getcwd(), 'buffer.pt'))
+#                return
 
     def to(self, device):
         self.buf = self.buf.to(device)

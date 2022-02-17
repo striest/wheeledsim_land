@@ -47,6 +47,7 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
         self.net = net
         self.image_key = image_key
         self.probs = torch.zeros(action_sequences.shape[0])
+        self.logits = torch.zeros(action_sequences.shape[0])
 
     def get_intervention_probs(self, obs):
         #img = obs[self.image_key]
@@ -54,11 +55,11 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
         with torch.no_grad():
             preds = self.net.forward(net_in).squeeze()
 
-        return torch.sigmoid(preds)
+        return torch.sigmoid(preds), preds
 
     def action(self, obs, deterministic=False, return_info=False):
         if self.t % self.T == 0:
-            self.probs = self.get_intervention_probs(obs)
+            self.probs, self.logits = self.get_intervention_probs(obs)
             self.seq_idx = self.probs.argmin()
             self.current_sequence = self.sequences[self.seq_idx]
 #            print("PROBS = {}".format(self.probs))
@@ -72,7 +73,8 @@ class InterventionMinimizePolicy(RandomActionSequencePolicy):
         if return_info:
             info = {
                 'act':act.to(self.device),
-                'probs': self.probs.detach().cpu()
+                'probs': self.probs.detach().cpu(),
+                'logits': self.logits.detach().cpu()
             }
             return act.to(self.device), info
         else:

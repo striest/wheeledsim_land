@@ -67,10 +67,14 @@ class InterventionReplayBuffer:
         #Find all timesteps that have interventions within the frame offset
 #        mask2 = torch.stack([self.intervention[(sample_idxs+i)%self.capacity] for i in range(self.frame_offset+1)], dim=-1).any(dim=-1)
         mask2 = self.intervention[sample_idxs]
+
+        #THIS IS A HACK THAT WILL NOT WORK IF THERE IS TURN-IN-PLACE
+        mask3 = (self.buffer['action'][sample_idxs, 0] - 0.5) > 0.
+
         #Intervention samples that are non-intervention but become interventions
-        intervention_samples = sample_idxs[mask1 & ~mask2]
+        intervention_samples = sample_idxs[mask1 & ~mask2 & mask3]
         #Non-interventions are samples that dont contain an intervention in the next N+frame_offset samples
-        non_intervention_samples = sample_idxs[~mask1]
+        non_intervention_samples = sample_idxs[~mask1 & mask3]
 
         return intervention_samples, non_intervention_samples
 

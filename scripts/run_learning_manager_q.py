@@ -20,7 +20,7 @@ from wheeledsim_land.policies.to_twist import ToTwist
 from wheeledsim_land.policies.action_sequences import generate_action_sequences
 from wheeledsim_land.policies.action_sequence_policy import InterventionMinimizePolicy
 from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
-from wheeledsim_land.trainers.intervention_predictor import InterventionPredictionTrainer
+from wheeledsim_land.trainers.q_learning import QLearningTrainer
 from wheeledsim_land.data_augmentation.gaussian_observation_noise import GaussianObservationNoise
 from wheeledsim_land.util.util import dict_map, dict_to
 
@@ -52,10 +52,10 @@ if __name__ == '__main__':
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=args.n_steer, t=args.T)
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
-    joy_policy = ToTwist(policy).to('cpu')
+    joy_policy = ToTwist(policy, tscale=1.75, sscale=1.0).to('cpu')
 
     aug = [GaussianObservationNoise({'image_rgb':0.1})]
-    trainer = InterventionPredictionTrainer(policy, net, buf, opt, aug, T=args.pT*args.T, tscale=1.75, sscale=1.0)
+    trainer = QLearningTrainer(policy, net, buf, opt, aug, T=args.T, tscale=1.75, sscale=1.0, discount=0.99, )
 
     cmd_pub = rospy.Publisher('/wanda/cmd_vel', Twist, queue_size=1)
 

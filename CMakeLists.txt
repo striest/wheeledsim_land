@@ -165,6 +165,7 @@ include_directories(
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/run_learning_manager.py
+  scripts/run_learning_manager_q.py
   scripts/arl/generate_intervention_topic.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
@@ -194,6 +195,7 @@ catkin_install_python(PROGRAMS
 install(FILES
   launch/simulator.launch
   launch/learning_warthog.launch
+  launch/q_learning_warthog.launch
   # myfile2
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

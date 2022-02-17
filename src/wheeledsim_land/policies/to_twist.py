@@ -6,8 +6,11 @@ class ToTwist:
     """
     Wrapper from the standard torch interface to twist messages
     """
-    def __init__(self, policy):
+    def __init__(self, policy, tscale=1.0, sscale=1.0):
         self.policy = policy
+        self.tscale = tscale
+        self.sscale = sscale
+
         self.device = self.policy.device
 
     def action(self, obs=None, return_info=False):
