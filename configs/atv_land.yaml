@@ -10,6 +10,12 @@
             options:
                 output_resolution: [128, 128]
                 nchannels: 3
+                
+        "/waypoint_feature":
+            type: Vector3
+            remap: "waypoint"
+            options:
+                stamped: True
 
     action:
         "/cmd":
