@@ -9,6 +9,7 @@ from tabulate import tabulate
 
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool
+from std_msgs.msg import Float32
 
 from wheeledsim_rl.networks.cnn_blocks.cnn_blocks import ResnetCNN
 from wheeledsim_rl.replaybuffers.dict_replaybuffer import NStepDictReplayBuffer
@@ -20,14 +21,12 @@ from rosbag_to_dataset.util.os_util import str2bool
 
 from wheeledsim_land.policies.to_joy import ToJoy
 from wheeledsim_land.policies.action_sequences import generate_action_sequences
-from wheeledsim_land.policies.action_sequence_policy import InterventionMinimizePolicy
+from wheeledsim_land.policies.action_sequence_policy import EnsembleInterventionMinimizePolicy
 from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
-from wheeledsim_land.trainers.intervention_predictor import InterventionPredictionTrainer
+from wheeledsim_land.trainers.ensemble_intervention_predictor import EnsembleInterventionPredictionTrainer
 
 from wheeledsim_land.visualization.replay_buffer import ReplayBufferViz
-from wheeledsim_land.visualization.intervention_prediction import InterventionPredictionViz
-
-
+from wheeledsim_land.visualization.intervention_prediction import EnsembleInterventionPredictionViz
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -36,6 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_stamps', type=str2bool, required=False, default=True, help='Whether to use the time provided in the stamps or just the ros time')
     parser.add_argument('--n_steer', type=int, required=False, default=5, help='Number of steering angles to consider')
     parser.add_argument('--T', type=int, required=False, default=5, help="Number of timesteps (from yaml) to execute actions for")
+    parser.add_argument('--K', type=int, required=False, default=3, help="Number of nets in ensemble")
     parser.add_argument('--pT', type=int, required=False, default=2, help="Multiplier on T for collision lookahead")
     parser.add_argument('--grad_rate', type=float, required=False, default=1., help='Numer of training steps to take per dt')
     parser.add_argument('--viz', type=str2bool, required=False, default=True, help='Whether to display a viz')
@@ -58,21 +58,26 @@ if __name__ == '__main__':
 
 #    buf = NStepDictReplayBuffer(spec, capacity=2000).to('cuda')
     buf = InterventionReplayBuffer(spec, capacity=10000, frame_offset=frame_offset).to('cuda')
-    net = ResnetCNN(insize=[3, 128, 128], outsize=steer_n, n_blocks=3, pool=4, mlp_hiddens=[32, ]).to('cuda')
-    opt = torch.optim.Adam(net.parameters(), lr=3e-4)
 
-    print(net)
+    nets = []
+    opts = []
+
+    for i in range(args.K):
+        net = ResnetCNN(insize=[3, 128, 128], outsize=steer_n, n_blocks=3, pool=4, mlp_hiddens=[32, ]).to('cuda')
+        opt = torch.optim.Adam(net.parameters(), lr=3e-4)
+        nets.append(net)
+        opts.append(opt)
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=steer_n, t=T)
-    policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
+    policy = EnsembleInterventionMinimizePolicy(env=None, action_sequences=seqs, nets=nets, lam=-5.0)
     joy_policy = ToJoy(policy, saxis=2, taxis=1).to('cuda')
 
-    trainer = InterventionPredictionTrainer(policy, net, buf, opt, T=args.pT*T, sscale=-1.0)
+    trainer = EnsembleInterventionPredictionTrainer(policy, nets, buf, opts, T=args.pT*T, sscale=-1.0)
 
     cmd_pub = rospy.Publisher("/joy_auto", Joy, queue_size=1)
 
 #    replay_buffer_viz = ReplayBufferViz(buf)
-    intervention_prediction_viz = InterventionPredictionViz(policy)
+    intervention_prediction_viz = EnsembleInterventionPredictionViz(policy)
 
     rate = rospy.Rate(1/spec.dt)
 
@@ -100,6 +105,13 @@ if __name__ == '__main__':
         should_train = msg.data
 
     train_sub = rospy.Subscriber('/enable_training', Bool, train_callback)
+
+    #Callback to update uncertainty coeff
+    def unc_callback(msg):
+        global policy
+        policy.lam = msg.data
+
+    unc_sub = rospy.Subscriber('/policy/lambda', Float32, unc_callback)
 
     while not rospy.is_shutdown():
         can_sample = buf.can_sample(trainer.T)

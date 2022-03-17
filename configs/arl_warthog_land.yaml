@@ -4,14 +4,16 @@
             type: Bool
             remap: "intervention"
 
-        "/front_camera":
-            type: Image
+        "/warthog2/stereo_left/image_rect_color/compressed":
+            type: CompressedImage
             remap: "image_rgb"
             options:
                 output_resolution: [128, 128]
                 nchannels: 3
 
     action:
-        "/cmd":
-            type: AckermannDrive
+        "/warthog2/warthog_velocity_controller/cmd_vel_out":
+            type: Twist
+            options:
+                mode: "action"
     dt: 0.1

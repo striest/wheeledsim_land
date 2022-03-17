@@ -4,7 +4,7 @@
             type: Bool
             remap: "intervention"
 
-        "/front_camera":
+        "/multisense/left/image_rect_color":
             type: Image
             remap: "image_rgb"
             options:
@@ -13,5 +13,7 @@
 
     action:
         "/cmd":
-            type: AckermannDrive
+            type: Twist
+            options:
+                mode: "action"
     dt: 0.1
