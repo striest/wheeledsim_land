@@ -3,14 +3,16 @@
         "/mux/intervention":
             type: Bool
             remap: "intervention"
+            options:
+                stamped: True
 
-        "/multisense/left/image_rect_color":
+        "/warty/forward/image":
             type: Image
             remap: "image_rgb"
             options:
-                output_resolution: [128, 128]
+                output_resolution: [64, 64]
                 nchannels: 3
-                
+
         "/waypoint_feature":
             type: Vector3
             remap: "waypoint"
@@ -18,8 +20,10 @@
                 stamped: True
 
     action:
-        "/cmd":
+        "/warty/joy_teleop/cmd_vel_stamped":
             type: Twist
             options:
-                mode: "action"
+                mode: action
+                stamped: true
+
     dt: 0.1

@@ -164,10 +164,9 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-    scripts/cmd_mux.py
-    scripts/joy_control.py
-    scripts/run_simulator.py
-    scripts/run_learning.py
+  scripts/run_learning_manager.py
+  scripts/run_learning_manager_q.py
+  scripts/arl/generate_intervention_topic.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -195,9 +194,15 @@ catkin_install_python(PROGRAMS
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
   launch/simulator.launch
-  launch/learning.launch
+  launch/learning_warthog.launch
+  launch/q_learning_warthog.launch
   # myfile2
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY
+    configs
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
 #############
