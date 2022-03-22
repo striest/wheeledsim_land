@@ -166,7 +166,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   scripts/run_learning_manager.py
   scripts/run_learning_manager_q.py
-  scripts/arl/generate_intervention_topic.py
+  scripts/misc/generate_intervention_topic.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

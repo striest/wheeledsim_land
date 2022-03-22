@@ -1,5 +1,9 @@
 ---
     observation:
+        "/odometry/filtered_odom":
+            type: Odometry
+            remap: "state"
+
         "/mux/intervention":
             type: Bool
             remap: "intervention"

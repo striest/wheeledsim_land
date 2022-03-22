@@ -4,6 +4,7 @@ import rospy
 import torch
 import argparse
 import os
+import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 from geometry_msgs.msg import Twist
@@ -14,20 +15,18 @@ from rosbag_to_dataset.converter.online_converter import OnlineConverter
 from rosbag_to_dataset.config_parser.config_parser import ConfigParser
 from rosbag_to_dataset.util.os_util import str2bool
 
-from wheeledsim_land.managers.eil_manager import EilManager
 from wheeledsim_land.networks.image_waypoint_network import ResnetWaypointNet
-from wheeledsim_land.policies.to_twist import ToTwist
-from wheeledsim_land.policies.to_joy import ToJoy
+from wheeledsim_land.replay_buffers.dict_replay_buffer import NStepDictReplayBuffer
 from wheeledsim_land.policies.action_sequences import generate_action_sequences
 from wheeledsim_land.policies.action_sequence_policy import InterventionMinimizePolicy
-from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
-from wheeledsim_land.trainers.q_learning import QLearningTrainer
+from wheeledsim_land.trainers.bc_q_learning import BCQLearningTrainer
 from wheeledsim_land.data_augmentation.gaussian_observation_noise import GaussianObservationNoise
 from wheeledsim_land.util.util import dict_map, dict_to
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--data_dir', type=str, required=True, help='Path to dir containing the BC data')
     parser.add_argument('--config_spec', type=str, required=True, help='Path to the yaml file that contains the dataset spec.')
     parser.add_argument('--use_stamps', type=str2bool, required=False, default=True, help='Whether to use the time provided in the stamps or just the ros time')
     parser.add_argument('--n_steer', type=int, required=False, default=5, help='Number of steering angles to consider')
@@ -41,26 +40,48 @@ if __name__ == '__main__':
     print("ARGS:")
     print(tabulate(vars(args).items(), headers = ['Arg', 'Value'], tablefmt='psql'))
 
-    rospy.init_node('online_learning')
     smax = 1.0
 
     config_parser = ConfigParser()
     spec, converters, remap, rates = config_parser.parse_from_fp(args.config_spec)
         
-    buf = InterventionReplayBuffer(spec, capacity=5000).to('cpu')
+    #Only sample human examples
+    buf = NStepDictReplayBuffer(spec, capacity=25000).to('cpu')
+
+    #Load samples into the buf
+    fps = os.listdir(args.data_dir)
+    for fp in fps:
+        traj_fp = os.path.join(args.data_dir, fp)
+        traj = dict_to(torch.load(traj_fp), 'cpu')
+        buf.insert(traj)
+
     net = ResnetWaypointNet(insize=[3, 128, 128], outsize=args.n_steer, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cpu')
     opt = torch.optim.Adam(net.parameters(), lr=3e-4)
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=args.n_steer, t=args.T)
     policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
-    joy_policy = ToJoy(policy).to('cpu')
 
     aug = [GaussianObservationNoise({'image_rgb':0.1})]
-    trainer = QLearningTrainer(policy, net, buf, opt, aug, T=args.T, tscale=1.0, sscale=1.0, discount=0.99, )
+    trainer = BCQLearningTrainer(policy, net, buf, opt, aug, T=args.T, tscale=1.0, sscale=1.0, discount=0.99, )
 
-    cmd_pub = rospy.Publisher('/joy_auto', Joy, queue_size=1)
+    #Actual training here
+    N = 2000
+    for i in range(N):
+        info = trainer.update()
+        
+        if i % 100 == 0:
+            print("{}/{}: {}".format(i+1, N, info))
 
-    print("POLICY RATE: {:.2f}s, GRAD RATE: {:.2f}s".format(spec.dt, spec.dt*args.grad_rate))
+    torch.save(net, 'bc_init_net.pt')
 
-    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate, cmd_pub, robot_base_frame='wanda/base').to('cpu')
-    manager.spin()
+    #Evaluate (This part isn't generic)
+    for i in range(100):
+        fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+        batch = buf.sample(1, 1)
+        s_curr = dict_map(batch['observation'], lambda x: x[:, 0])
+        with torch.no_grad():
+            qs = net.forward(s_curr).squeeze()
+
+        axs[0].imshow(batch['observation']['image_rgb'].squeeze().permute(1, 2, 0))
+        axs[1].plot(qs)
+        plt.show()
