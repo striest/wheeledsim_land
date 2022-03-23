@@ -46,33 +46,35 @@ if __name__ == '__main__':
     spec, converters, remap, rates = config_parser.parse_from_fp(args.config_spec)
         
     #Only sample human examples
-    buf = NStepDictReplayBuffer(spec, capacity=25000).to('cpu')
+    buf = NStepDictReplayBuffer(spec, capacity=12000).to('cuda')
 
     #Load samples into the buf
     fps = os.listdir(args.data_dir)
     for fp in fps:
         traj_fp = os.path.join(args.data_dir, fp)
-        traj = dict_to(torch.load(traj_fp), 'cpu')
+        traj = dict_to(torch.load(traj_fp), 'cuda')
         buf.insert(traj)
 
-    net = ResnetWaypointNet(insize=[3, 128, 128], outsize=args.n_steer, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cpu')
+    net = ResnetWaypointNet(insize=[3, 128, 128], outsize=args.n_steer, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cuda')
     opt = torch.optim.Adam(net.parameters(), lr=3e-4)
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=args.n_steer, t=args.T)
-    policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
+    policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net).to('cuda')
 
     aug = [GaussianObservationNoise({'image_rgb':0.1})]
-    trainer = BCQLearningTrainer(policy, net, buf, opt, aug, T=args.T, tscale=1.0, sscale=1.0, discount=0.99, )
+    trainer = BCQLearningTrainer(policy, net, buf, opt, aug, T=args.T, tscale=1.0, sscale=-1.0, discount=0.99, batchsize=64)
 
     #Actual training here
-    N = 2000
+    N = 10000
     for i in range(N):
         info = trainer.update()
         
         if i % 100 == 0:
             print("{}/{}: {}".format(i+1, N, info))
 
-    torch.save(net, 'bc_init_net.pt')
+    net = net.to('cpu')
+    buf = buf.to('cpu')
+    torch.save(net.to('cpu'), 'bc_init_net.pt')
 
     #Evaluate (This part isn't generic)
     for i in range(100):

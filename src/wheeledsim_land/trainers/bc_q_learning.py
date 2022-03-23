@@ -53,7 +53,8 @@ class BCQLearningTrainer:
         batch = aug.forward(batch)
 
         #Consider assigning highest magnitude in the slice to get better label distribution
-        seq_idxs = torch.argmin(torch.norm(batch['action'][:, 0].unsqueeze(1) - self.scaled_acts.unsqueeze(0), dim=-1), dim=-1)
+        max_steer_idx = batch['action'][:, :, 1].abs().argmax(dim=1)
+        seq_idxs = torch.argmin(torch.norm(batch['action'][torch.arange(self.batchsize), max_steer_idx].unsqueeze(1) - self.scaled_acts.unsqueeze(0), dim=-1), dim=-1)
 
         #_x = batch['observation']['image_rgb'][:, 0]
 

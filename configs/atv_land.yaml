@@ -7,6 +7,8 @@
         "/mux/intervention":
             type: Bool
             remap: "intervention"
+            options:
+                stamped: True
 
         "/multisense/left/image_rect_color":
             type: Image
