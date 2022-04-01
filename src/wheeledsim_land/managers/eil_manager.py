@@ -201,7 +201,7 @@ class EilManager:
 
             self.itrs += 1
             self.log()
-            self.publish_debug()
+#            self.publish_debug()
 
             self.rate.sleep()
 

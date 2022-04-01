@@ -69,12 +69,12 @@ class InterventionReplayBuffer:
         mask2 = self.intervention[sample_idxs]
 
         #THIS IS A HACK THAT WILL NOT WORK IF THERE IS TURN-IN-PLACE
-        mask3 = (self.buffer['action'][sample_idxs, 0] - 0.5) > 0.
+#        mask3 = (self.buffer['action'][sample_idxs, 0] - 0.5) > 0.
 
         #Intervention samples that are non-intervention but become interventions
-        intervention_samples = sample_idxs[mask1 & ~mask2 & mask3]
+        intervention_samples = sample_idxs[mask1 & ~mask2]
         #Non-interventions are samples that dont contain an intervention in the next N+frame_offset samples
-        non_intervention_samples = sample_idxs[~mask1 & mask3]
+        non_intervention_samples = sample_idxs[~mask1]
 
         return intervention_samples, non_intervention_samples
 
@@ -117,11 +117,11 @@ class InterventionReplayBuffer:
         return out
 
     def compute_sample_idxs(self, N):
-        all_idxs = torch.arange(min(len(self) + 1, self.capacity)).to(self.device)
+        all_idxs = torch.arange(max(0, min(len(self)-N, self.capacity))).to(self.device)
 
         #To handle wrapping properly, we also need to say that the current idx is terminal
         terminal_idxs = torch.nonzero(self.buffer['terminal'][:len(self)])[:, 0]
-        terminal_idxs = torch.cat([terminal_idxs, torch.tensor([self.n % self.capacity]).to(self.device)], dim=0)
+#        terminal_idxs = torch.cat([terminal_idxs, torch.tensor([self.n % self.capacity]).to(self.device)], dim=0)
 
         #This is not correct. 
 #        if self.n > self.capacity:

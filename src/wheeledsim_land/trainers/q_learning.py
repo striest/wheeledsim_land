@@ -40,8 +40,6 @@ class QLearningTrainer:
 
         self.batchsize = batchsize
         self.T = T
-        self.scaling = torch.tensor([tscale, sscale]).to(self.buf.device)
-        self.scaled_acts = self.policy.sequences[:, 0] * self.scaling.unsqueeze(0)
 
         self.target_network = copy.deepcopy(self.network)
 
@@ -51,21 +49,14 @@ class QLearningTrainer:
         aug = np.random.choice(self.augmentations)
         batch = aug.forward(batch)
 
-        seq_idxs = torch.argmin(torch.norm(batch['action'][:, 0].unsqueeze(1) - self.scaled_acts.unsqueeze(0), dim=-1), dim=-1)
-
         #_x = batch['observation']['image_rgb'][:, 0]
 
         s_curr = dict_map(batch['observation'], lambda x: x[:, 0])
         s_next = dict_map(batch['next_observation'], lambda x:x[:, -1])
+        seq_idxs = dict_map(batch['action'], lambda x:x[:, 0, 0].long())
 
         print({k:v.shape for k,v in s_curr.items()})
         intervention = (batch['observation']['intervention'].abs() > 1e-2).any(dim=1).squeeze().float()
-
-#        print(self.scaling)
-#        print('SACT:', self.scaled_acts)
-#        print('ACTS + LABELS:', torch.cat([batch['action'][:, 0], intervention.unsqueeze(-1)], dim=-1))
-#        print('SEQS:', seq_idxs)
-#        print('RAW LABELS:', batch['observation']['intervention'].abs() )
 
         """
         Steps:
@@ -97,6 +88,11 @@ class QLearningTrainer:
             'loss':loss.detach().cpu().item(),
             'train time': te
         }
+
+        print("INTERVENTIONS: ", intervention)
+        print("ACTIONS: ", seq_idxs)
+        print("QS: ", q_curr.detach())
+        print("COSTS: ", costs.detach())
 
         return info
 
