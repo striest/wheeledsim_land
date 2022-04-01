@@ -24,7 +24,7 @@ class ToJoy:
         msg = Joy()
         msg.header.stamp = rospy.Time.now()
         msg.buttons = [0] * 12
-        msg.axes = [0.] * 6
+        msg.axes = [0.] * 8
         msg.axes[self.taxis] = act[0].cpu().item()
         msg.axes[self.saxis] = act[1].cpu().item()
         msg.buttons[4] = 1

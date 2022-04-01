@@ -61,10 +61,10 @@ class QLearningTrainer:
         print({k:v.shape for k,v in s_curr.items()})
         intervention = (batch['observation']['intervention'].abs() > 1e-2).any(dim=1).squeeze().float()
 
-        print(self.scaling)
-        print('SACT:', self.scaled_acts)
-        print('ACTS + LABELS:', torch.cat([batch['action'][:, 0], intervention.unsqueeze(-1)], dim=-1))
-        print('SEQS:', seq_idxs)
+#        print(self.scaling)
+#        print('SACT:', self.scaled_acts)
+#        print('ACTS + LABELS:', torch.cat([batch['action'][:, 0], intervention.unsqueeze(-1)], dim=-1))
+#        print('SEQS:', seq_idxs)
 #        print('RAW LABELS:', batch['observation']['intervention'].abs() )
 
         """

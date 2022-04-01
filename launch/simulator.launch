@@ -1,18 +1,13 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="simulator_config_file" default="../configs/frontcam_racetrack.yaml"/>
+    <arg name="simulator_config_file" default="../../../configs/pybullet_sim/racetrack.yaml"/>
 
-    <node pkg="wheeledsim_land" type="run_simulator.py" name="simulator" args="--config $(dirname)/$(arg simulator_config_file)"> 
+    <node pkg="wheeledsim_land" type="run_simulator.py" name="simulator" output="screen"> 
+        <param name="simulator_config_file" value="$(dirname)/$(arg simulator_config_file)" />
     </node>
 
-    <node pkg="joy" type="joy_node" name="joy_node">
-    </node>
-
-	<node pkg="wheeledsim_land" type="cmd_mux.py" name="cmd_mux"> 
-	</node>
-
-	<node pkg="wheeledsim_land" type="joy_control.py" name="joy_control" output="screen" > 
+	<node pkg="wheeledsim_land" type="joy_control.py" name="joy_control" > 
 	</node>
 
 </launch>

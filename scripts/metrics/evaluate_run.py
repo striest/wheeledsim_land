@@ -72,7 +72,10 @@ if __name__ == '__main__':
         intervention_positions.append(pos)
         positions[idx, 3] = 1.
 
-    intervention_positions = np.stack(intervention_positions, axis=0)
+    if len(intervention_positions) > 0:
+        intervention_positions = np.stack(intervention_positions, axis=0)
+    else:
+        intervention_positions = np.zeros([1, 3])
 
     #Create figures
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))

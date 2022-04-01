@@ -167,6 +167,9 @@ catkin_install_python(PROGRAMS
   scripts/run_learning_manager.py
   scripts/run_learning_manager_q.py
   scripts/misc/generate_intervention_topic.py
+  scripts/pybullet_sim/run_simulator.py
+  scripts/pybullet_sim/joy_control.py
+
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
