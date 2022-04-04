@@ -169,6 +169,7 @@ catkin_install_python(PROGRAMS
   scripts/misc/generate_intervention_topic.py
   scripts/pybullet_sim/run_simulator.py
   scripts/pybullet_sim/joy_control.py
+  scripts/pybullet_sim/dummy_waypoint_feature.py
 
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

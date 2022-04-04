@@ -9,6 +9,7 @@ from tabulate import tabulate
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
 from std_msgs.msg import Bool
+from common_msgs.msg import Int32Stamped
 
 from rosbag_to_dataset.converter.online_converter import OnlineConverter
 from rosbag_to_dataset.config_parser.config_parser import ConfigParser
@@ -16,10 +17,9 @@ from rosbag_to_dataset.util.os_util import str2bool
 
 from wheeledsim_land.managers.eil_manager import EilManager
 from wheeledsim_land.networks.image_waypoint_network import ResnetWaypointNet
-from wheeledsim_land.policies.to_twist import ToTwist
-from wheeledsim_land.policies.to_joy import ToJoy
+from wheeledsim_land.policies.to_int32 import ToInt32
 from wheeledsim_land.policies.action_sequences import generate_action_sequences
-from wheeledsim_land.policies.action_sequence_policy import InterventionMinimizePolicy
+from wheeledsim_land.policies.discrete_policy import DiscreteInterventionMinimizePolicy
 from wheeledsim_land.replay_buffers.intervention_replay_buffer import InterventionReplayBuffer
 from wheeledsim_land.trainers.q_learning import QLearningTrainer
 from wheeledsim_land.data_augmentation.gaussian_observation_noise import GaussianObservationNoise
@@ -49,20 +49,18 @@ if __name__ == '__main__':
         
     buf = InterventionReplayBuffer(spec, capacity=5000).to('cpu')
 
-    #BAD FIX LATER
-    net = ResnetWaypointNet(insize=[2, 128, 128], outsize=args.n_steer, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cpu')
-    net = torch.load('bc_init_net.pt')
+    net = ResnetWaypointNet(insize=[3, 128, 128], outsize=args.n_steer, n_blocks=2, pool=4, mlp_hiddens=[32, ]).to('cpu')
 
     opt = torch.optim.Adam(net.parameters(), lr=3e-4)
 
     seqs = generate_action_sequences(throttle=(1, 1), throttle_n=1, steer=(-smax, smax), steer_n=args.n_steer, t=args.T)
-    policy = InterventionMinimizePolicy(env=None, action_sequences=seqs, net=net)
-    joy_policy = ToJoy(policy, saxis=2).to('cpu')
+    policy = DiscreteInterventionMinimizePolicy(env=None,  net=net)
+    joy_policy = ToInt32(policy).to('cpu')
 
     aug = [GaussianObservationNoise({'image_rgb':0.1})]
     trainer = QLearningTrainer(policy, net, buf, opt, aug, T=args.T, tscale=1.0, sscale=1.0, discount=0.95, )
 
-    cmd_pub = rospy.Publisher('/joy_auto', Joy, queue_size=1)
+    cmd_pub = rospy.Publisher('/eil/discrete_action', Int32Stamped, queue_size=1)
 
     print("POLICY RATE: {:.2f}s, GRAD RATE: {:.2f}s".format(spec.dt, spec.dt*args.grad_rate))
 

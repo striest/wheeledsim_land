@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="simulator_config_file" default="../../../configs/pybullet_sim/racetrack.yaml"/>
+    <arg name="simulator_config_file" default="../../../../configs/pybullet_sim/racetrack.yaml"/>
 
     <node pkg="wheeledsim_land" type="run_simulator.py" name="simulator" output="screen"> 
         <param name="simulator_config_file" value="$(dirname)/$(arg simulator_config_file)" />
@@ -9,5 +9,7 @@
 
 	<node pkg="wheeledsim_land" type="joy_control.py" name="joy_control" > 
 	</node>
+
+    <node pkg="wheeledsim_land" type="dummy_waypoint_feature.py" name="dummy_waypoint_feature_publisher" />
 
 </launch>

@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="action_library_path" default="../../../../configs/pybullet_sim/action_libraries/constant_speed_5_steer.yaml"/>
+    <arg name="eil_discrete_topic" default="/eil/discrete_action"/>
+    <arg name="eil_continuous_topic" default="/joy_auto"/>
+    <arg name="teleop_continuous_topic" default="/mux/joy"/>
+    <arg name="teleop_discrete_topic" default="/joy_discrete"/>
+
+    <!-- undiscreize EIL actions -->
+    <node name="eil_undiscretize" pkg="deep_learning_control" type="undiscretize_actions.py" output="screen">
+        <param name="action_library_path" value="$(dirname)/$(arg action_library_path)" />
+        <param name="input_topic" value="$(arg eil_discrete_topic)" />
+        <param name="output_topic" value="$(arg eil_continuous_topic)" />
+    </node>
+
+    <!-- discretize muxed actions -->
+    <node name="eil_discretize" pkg="deep_learning_control" type="discretize_actions.py" output="screen">
+        <param name="action_library_path" value="$(dirname)/$(arg action_library_path)" />
+        <param name="input_topic" value="$(arg teleop_continuous_topic)" />
+        <param name="output_topic" value="$(arg teleop_discrete_topic)" />
+    </node>
+
+    <!-- teleop mux -->
+    <node name="cmd_mux" pkg="deep_learning_control" type="cmd_mux.py" />
+
+    <!-- joy node -->
+    <node name="joy" pkg="joy" type="joy_node" />
+
+</launch>
