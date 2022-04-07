@@ -8,7 +8,21 @@
     <arg name="grad_rate" default="1"/>
     <arg name="viz" default="t"/>
 
+    <arg name="action_library_path" default="../../../../configs/pybullet_sim/action_libraries/constant_speed_5_steer.yaml"/>
+    <arg name="discrete_action_topic" default="/joy_discrete"/>
+    <arg name="q_values_topic" default="/eil/q_values"/>
+    <arg name="intervention_topic" default="/mux/intervention"/>
+    <arg name="robot_base_frame" default="robot"/>
+
 	<node pkg="wheeledsim_land" type="run_learning_manager_q.py" name="learning" args="--config_spec $(dirname)/$(arg learning_config_file) --use_stamps t --n_steer $(arg n_steer) --T $(arg T) --pT $(arg pT) --grad_rate $(arg grad_rate) --viz $(arg viz)" output="screen"> 
 	</node>
+
+    <node pkg="wheeledsim_land" type="visualization_node.py" name="eil_viz">
+        <param name="action_library_path" value="$(dirname)/$(arg action_library_path)"/>
+        <param name="discrete_action_topic" value="$(arg discrete_action_topic)"/>
+        <param name="q_values_topic" value="$(arg q_values_topic)"/>
+        <param name="intervention_topic" value="$(arg intervention_topic)"/>
+        <param name="base_frame" value="$(arg robot_base_frame)"/>
+    </node>
 
 </launch>

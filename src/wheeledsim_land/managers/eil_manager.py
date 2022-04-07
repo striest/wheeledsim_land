@@ -8,7 +8,7 @@ from tabulate import tabulate
 from cv_bridge import CvBridge
 
 from sensor_msgs.msg import Joy, Image
-from std_msgs.msg import Bool, Float64
+from std_msgs.msg import Bool, Float64, Float64MultiArray
 from nav_msgs.msg import Path
 from geometry_msgs.msg import Pose, PoseStamped
 
@@ -25,7 +25,7 @@ class EilManager:
     I'm not sure if this is a great way to handle this, but for now I will subscribe to
     a clock that handles the buffer/policy updates
     """
-    def __init__(self, config_spec, policy, trainer, seqs, update_rate, train_rate, cmd_pub, use_stamps=True, robot_base_frame='/warty/base', device='cpu'):
+    def __init__(self, config_spec, policy, trainer, seqs, update_rate, train_rate, cmd_pub, use_stamps=True, device='cpu'):
         """
         Args:
             config_spec: Path to yaml file containing observation config
@@ -73,12 +73,9 @@ class EilManager:
         self.itrs = 0
 
         #debug
-        self.robot_base_frame = robot_base_frame
         self.loss_pub = rospy.Publisher('/eil/loss', Float64, queue_size=1)
-        self.action_library_pub = rospy.Publisher('/eil/action_library', Path, queue_size=1)
-        self.best_action_pub = rospy.Publisher('/eil/best_action', Path, queue_size=1)
-        self.waypoint_feature_pub = rospy.Publisher('/eil/waypoint_feature', Path, queue_size=1)
         self.img_pub = rospy.Publisher('/eil/image', Image, queue_size=1)
+        self.q_pub = rospy.Publisher('/eil/q_values', Float64MultiArray, queue_size=1)
         self.bridge = CvBridge()
 
         #Start updating
@@ -139,50 +136,10 @@ class EilManager:
         if 'loss' in self.trainer_info.keys():
             self.loss_pub.publish(self.trainer_info['loss'])
         
-        trajlib_msg = Path()
-        trajlib_msg.header.stamp = rospy.Time.now()
-        trajlib_msg.header.frame_id = self.robot_base_frame
-
-        for seq in self.seqs:
-            p1 = PoseStamped()
-            p2 = PoseStamped()
-            p1.pose.position.x = seq[-1, 0].item() * 3.
-            p1.pose.position.y = seq[-1, -1].item() * 3.
-            p1.header.frame_id = self.robot_base_frame
-            p2.header.frame_id = self.robot_base_frame
-            trajlib_msg.poses.append(p1)
-            trajlib_msg.poses.append(p2)
-
-        self.action_library_pub.publish(trajlib_msg)
-
-        if 'act' in self.policy_info.keys():
-            best_action_msg = Path()
-            best_action_msg.header.stamp = rospy.Time.now()
-            best_action_msg.header.frame_id = self.robot_base_frame
-            p1 = PoseStamped()
-            p2 = PoseStamped()
-            p2.pose.position.x = self.policy_info['act'][0].item() * 5.
-            p2.pose.position.y = self.policy_info['act'][1].item() * 5.
-            p1.header.frame_id = self.robot_base_frame
-            p2.header.frame_id = self.robot_base_frame
-            best_action_msg.poses.append(p1)
-            best_action_msg.poses.append(p2)
-            self.best_action_pub.publish(best_action_msg)
-
-        if len(self.buf) > 0 and 'waypoint' in self.buf.buffer['observation'].keys():
-            wpt = self.buf.buffer['observation']['waypoint'][(self.buf.n-1) % self.buf.capacity]
-            wpt_msg = Path()
-            wpt_msg.header.stamp = rospy.Time.now()
-            wpt_msg.header.frame_id = self.robot_base_frame
-            p1 = PoseStamped()
-            p2 = PoseStamped()
-            p2.pose.position.x = wpt[0].item()
-            p2.pose.position.y = wpt[1].item()
-            p1.header.frame_id = self.robot_base_frame
-            p2.header.frame_id = self.robot_base_frame
-            wpt_msg.poses.append(p1)
-            wpt_msg.poses.append(p2)
-            self.waypoint_feature_pub.publish(wpt_msg)
+        if 'logits' in self.policy_info.keys():
+            msg = Float64MultiArray()
+            msg.data = self.policy_info['logits']
+            self.q_pub.publish(msg)
 
         if len(self.buf) > 0 and 'image_rgb' in self.buf.buffer['observation'].keys():
             img = self.buf.buffer['observation']['image_rgb'][(self.buf.n-1) % self.buf.capacity]
@@ -201,7 +158,7 @@ class EilManager:
 
             self.itrs += 1
             self.log()
-#            self.publish_debug()
+            self.publish_debug()
 
             self.rate.sleep()
 

@@ -64,5 +64,5 @@ if __name__ == '__main__':
 
     print("POLICY RATE: {:.2f}s, GRAD RATE: {:.2f}s".format(spec.dt, spec.dt*args.grad_rate))
 
-    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate, cmd_pub, robot_base_frame='gps_frame').to('cpu')
+    manager = EilManager(args.config_spec, joy_policy, trainer, seqs, spec.dt, spec.dt*args.grad_rate, cmd_pub).to('cpu')
     manager.spin()
