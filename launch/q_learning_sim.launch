@@ -1,20 +1,29 @@
 <?xml version="1.0"?>
 
 <launch>
-    <arg name="learning_config_file" default="../../../../configs/pybullet_sim/pybullet_land.yaml"/>
-    <arg name="n_steer" default="5"/>
-    <arg name="T" default="5"/>
-    <arg name="pT" default="2"/>
-    <arg name="grad_rate" default="1"/>
-    <arg name="viz" default="t"/>
-
+    <!-- File management -->
     <arg name="action_library_path" default="../../../../configs/pybullet_sim/action_libraries/constant_speed_5_steer.yaml"/>
+    <arg name="learning_config_file" default="../../../../configs/pybullet_sim/pybullet_land.yaml"/>
+    <arg name="net_dir" default="../../../../networks/eil/"/>
+    <arg name="net_fp" default=""/>
+
+    <!-- Learning Params -->
+    <arg name="T" default="5"/>
+    <arg name="grad_rate" default="1"/>
+
+    <!-- Rostopics -->
     <arg name="discrete_action_topic" default="/joy_discrete"/>
     <arg name="q_values_topic" default="/eil/q_values"/>
     <arg name="intervention_topic" default="/mux/intervention"/>
     <arg name="robot_base_frame" default="robot"/>
 
-	<node pkg="wheeledsim_land" type="run_learning_manager_q.py" name="learning" args="--config_spec $(dirname)/$(arg learning_config_file) --use_stamps t --n_steer $(arg n_steer) --T $(arg T) --pT $(arg pT) --grad_rate $(arg grad_rate) --viz $(arg viz)" output="screen"> 
+	<node pkg="wheeledsim_land" type="run_learning_manager_q.py" name="eil_node" output="screen"> 
+        <param name="config_spec_path" value="$(dirname)/$(arg learning_config_file)"/>
+        <param name="action_library_path" value="$(dirname)/$(arg action_library_path)"/>
+        <param name="net_dir" value="$(dirname)/$(arg net_dir)"/>
+        <param name="net_fp" value="$(dirname)/$(arg net_fp)"/>
+        <param name="T" value="$(arg T)"/>
+        <param name="grad_rate" value="$(arg grad_rate)"/>
 	</node>
 
     <node pkg="wheeledsim_land" type="visualization_node.py" name="eil_viz">

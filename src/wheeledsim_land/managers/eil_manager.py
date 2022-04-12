@@ -22,10 +22,8 @@ from wheeledsim_land.util.util import dict_map, dict_to
 class EilManager:
     """
     General manager class that handles all the ROS->torch and torch->ROS stuff for EIL
-    I'm not sure if this is a great way to handle this, but for now I will subscribe to
-    a clock that handles the buffer/policy updates
     """
-    def __init__(self, config_spec, policy, trainer, seqs, update_rate, train_rate, cmd_pub, use_stamps=True, device='cpu'):
+    def __init__(self, config_spec, policy, trainer, update_rate, train_rate, cmd_pub, log_dir, log_every=60., use_stamps=True, device='cpu'):
         """
         Args:
             config_spec: Path to yaml file containing observation config
@@ -35,6 +33,8 @@ class EilManager:
             update_rate: The dt to update buffers at
             train_rate: The dt to take trainer updates at
             cmd_pub: The publisher to publish control messages to
+            log_dir: The location to save networks
+            log_every: Save a log every X seconds
             robot_base_frame: For viz, provide the robot's base frame
         """
         # Initialize torch objects
@@ -48,7 +48,6 @@ class EilManager:
         self.network = trainer.network
         self.opt = trainer.opt
         self.buf = trainer.buf
-        self.seqs = seqs
         self.device = device
         self.prev_data = None
 
@@ -66,6 +65,9 @@ class EilManager:
         self.converter.get_data()
 
         #logging/statistics
+        self.log_dir = log_dir
+        self.log_every = log_every
+
         self.logger = Logger()
         self.policy_time = -1.
         self.policy_info = {}
@@ -80,6 +82,7 @@ class EilManager:
 
         #Start updating
         rospy.Timer(rospy.Duration(update_rate), self.update)
+        rospy.Timer(rospy.Duration(self.log_every), self.save_networks)
 
     def handle_train(self, msg):
         self.should_train = msg.data
@@ -108,6 +111,18 @@ class EilManager:
         msg, self.policy_info = self.policy.action(data['observation'], return_info=True)
         self.policy_time = (rospy.Time.now() - ts).to_sec()
         self.cmd_pub.publish(msg)
+
+    def save_networks(self, event):
+        save_fp = os.path.join(self.log_dir, "itr_{}.pt".format(self.itrs))
+        rospy.loginfo("Save to {}".format(save_fp))
+        checkpoint = {
+            "epoch":self.itrs,
+            "net":self.network,
+            "net_state_dict":self.network.state_dict(),
+            "opt":self.opt,
+            "opt_state_dict":self.opt.state_dict()
+        }
+        torch.save(checkpoint, save_fp)
 
     def can_train(self):
         can_sample = self.buf.can_sample(self.trainer.T)
@@ -157,7 +172,7 @@ class EilManager:
                 self.trainer_info = self.trainer.update()
 
             self.itrs += 1
-            self.log()
+#            self.log()
             self.publish_debug()
 
             self.rate.sleep()

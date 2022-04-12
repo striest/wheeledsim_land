@@ -6,6 +6,7 @@ import pybullet
 import time
 import tf2_ros
 
+from std_msgs.msg import Int32
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from common_msgs.msg import AckermannDriveArray
 from nav_msgs.msg import Odometry
@@ -67,6 +68,6 @@ if __name__ == '__main__':
         tf_msg.transform.rotation.w = state.pose.pose.orientation.w
         tf_br.sendTransform(tf_msg)
 
-        print('STEP: {:.6f}, SENSE: {:.6f}'.format(t2-t1, t3-t2))
+#        print('STEP: {:.6f}, SENSE: {:.6f}'.format(t2-t1, t3-t2))
 
         rate.sleep()
