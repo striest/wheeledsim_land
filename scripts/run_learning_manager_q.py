@@ -69,7 +69,7 @@ if __name__ == '__main__':
     joy_policy = ToInt32(policy).to('cpu')
 
     aug = [GaussianObservationNoise({'image_rgb':0.1})]
-    trainer = QLearningTrainer(policy, net, buf, opt, aug, T=T, tscale=1.0, sscale=1.0, discount=0.98, )
+    trainer = QLearningTrainer(policy, net, buf, opt, aug, T=T, tscale=1.0, sscale=1.0, discount=0.999, )
 
     cmd_pub = rospy.Publisher('/eil/discrete_action', Int32Stamped, queue_size=1)
 

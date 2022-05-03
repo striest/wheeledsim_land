@@ -10,7 +10,7 @@ Network that takes in an image and waypoint (as a 3-vector x,y,th) and produces 
 """
 
 class ResnetWaypointNet(nn.Module):
-    def __init__(self, insize, outsize, n_blocks, mlp_hiddens, hidden_activation=nn.Tanh, dropout=0.0, pool=2, image_key='image_rgb', waypoint_key='waypoint', device='cpu'):
+    def __init__(self, insize, outsize, n_blocks, mlp_hiddens, hidden_activation=nn.Tanh, dropout=0.0, pool=2, image_key='image_rgb', waypoint_key='waypoint', steer_angle_key='steering_angle', device='cpu'):
         """
         Args:
             insize: The size of the input images. Expects a 3-tuple (nchannels, height, width)
@@ -30,20 +30,23 @@ class ResnetWaypointNet(nn.Module):
         self.cnn = torch.nn.Sequential(*self.cnn)
 
         with torch.no_grad():
-            self.mlp_insize = self.cnn(torch.zeros(1, *insize)).flatten(start_dim=-3).shape[-1] + 3
+            self.mlp_insize = self.cnn(torch.zeros(1, *insize)).flatten(start_dim=-3).shape[-1] + 4
 
         self.mlp = MLP(self.mlp_insize, outsize, mlp_hiddens, hidden_activation, dropout, device)
 
         self.image_key = image_key
         self.waypoint_key = waypoint_key
+        self.steer_angle_key = steer_angle_key
 
     def forward(self, x):
         img = x[self.image_key]
         waypt = x[self.waypoint_key]
+        sang = x[self.steer_angle_key]
+        print(img.shape, waypt.shape, sang.shape)
 
         cnn_out = self.cnn.forward(img)
         mlp_img_in = cnn_out.flatten(start_dim=-3)
-        mlp_in = torch.cat([mlp_img_in, waypt], dim=-1)
+        mlp_in = torch.cat([mlp_img_in, waypt, sang], dim=-1)
         out = self.mlp.forward(mlp_in)
         return out
 

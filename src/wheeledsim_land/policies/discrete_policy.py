@@ -18,6 +18,7 @@ class DiscreteInterventionMinimizePolicy:
     def get_intervention_probs(self, obs):
         #img = obs[self.image_key]
         net_in = dict_map(obs, lambda x: x.unsqueeze(0))
+        print({k:v.shape for k,v in net_in.items()})
         with torch.no_grad():
             preds = self.net.forward(net_in).squeeze()
 
